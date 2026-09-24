@@ -1,7 +1,7 @@
-import { DEFAULT_SERVICE_UUID, HEIGHT } from './config.js';
-import { SketcherBluetooth, BluetoothFailure } from './bluetooth.js';
-import { loadImage, renderImage } from './imageProcessor.js';
-import { sendImage } from './protocol.js';
+import { DEFAULT_SERVICE_UUID, HEIGHT } from './config.js?v=20260924-3';
+import { SketcherBluetooth, BluetoothFailure } from './bluetooth.js?v=20260924-3';
+import { loadImage, renderImage } from './imageProcessor.js?v=20260924-3';
+import { sendImage } from './protocol.js?v=20260924-3';
 
 const $ = id => document.getElementById(id);
 const ui = {
@@ -50,7 +50,7 @@ function friendlyError(error) {
     'write-unsupported': 'Charakterystyka nie obsługuje zapisu danych.',
     gatt: 'Błąd połączenia GATT. Sprawdź, czy urządzenie nie jest zajęte przez inną aplikację.',
     disconnected: 'Urządzenie zostało odłączone. Połącz je ponownie.',
-    timeout: 'Projektor nie potwierdził odbioru linii w wyznaczonym czasie.',
+    timeout: 'Brak odpowiedzi BLE w trybie diagnostycznym.',
     write: 'Błąd zapisu BLE. Jeśli wystąpił przy 320 B, spróbuj 80 B w ustawieniach transmisji. W razie potrzeby połącz projektor ponownie.',
     busy: 'Trwa już oczekiwanie na odpowiedź urządzenia.'
   })[error.code] || 'Błąd komunikacji Bluetooth.';
@@ -112,5 +112,5 @@ ui.send.addEventListener('click', async () => {
 });
 
 if ('serviceWorker' in navigator && window.isSecureContext) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js').catch(console.error));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' }).catch(console.error));
 }

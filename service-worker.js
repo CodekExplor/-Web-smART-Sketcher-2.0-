@@ -1,11 +1,40 @@
-const CACHE = 'smart-sketcher-web-v2';
-const ASSETS = ['./', './index.html', './css/styles.css', './js/app.js', './js/bluetooth.js', './js/config.js', './js/imageProcessor.js', './js/protocol.js', './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png'];
-self.addEventListener('install', event => { event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS))); self.skipWaiting(); });
-self.addEventListener('activate', event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key))))); self.clients.claim(); });
+const CACHE = 'smart-sketcher-web-v3';
+const PREFIX = 'smart-sketcher-web-';
+const ASSETS = [
+  './', './index.html', './css/styles.css?v=20260924-3',
+  './js/app.js?v=20260924-3', './js/bluetooth.js?v=20260924-3',
+  './js/config.js?v=20260924-3', './js/imageProcessor.js?v=20260924-3',
+  './js/protocol.js?v=20260924-3', './manifest.webmanifest?v=20260924-3',
+  './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png'
+];
+
+self.addEventListener('install', event => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await Promise.all(ASSETS.map(async path => {
+      const response = await fetch(new Request(path, { cache: 'no-store' }));
+      if (!response.ok) throw new Error(`Nie można zapisać zasobu offline: ${path}`);
+      await cache.put(path, response);
+    }));
+    await self.skipWaiting();
+  })());
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(key => key.startsWith(PREFIX) && key !== CACHE).map(key => caches.delete(key)));
+    await self.clients.claim();
+  })());
+});
+
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET' || new URL(event.request.url).origin !== self.location.origin) return;
-  event.respondWith(fetch(event.request).then(response => {
-    if (response.ok) { const copy = response.clone(); caches.open(CACHE).then(cache => cache.put(event.request, copy)); }
+  event.respondWith(fetch(event.request, { cache: 'no-store' }).then(async response => {
+    if (response.ok) {
+      const cache = await caches.open(CACHE);
+      await cache.put(event.request, response.clone());
+    }
     return response;
   }).catch(() => caches.match(event.request)));
 });

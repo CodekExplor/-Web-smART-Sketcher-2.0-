@@ -53,9 +53,10 @@ Jeśli przeglądarka odrzuca zapis 320 B, w **Ustawieniach połączenia i transm
 
 ### Gdy obraz ma poziome przerwy
 
-1. Odśwież stronę i użyj domyślnej opcji **Cała linia · 320 B**. Zamknij zainstalowaną PWA przed ponownym otwarciem, aby pobrała nową wersję.
-2. Wyślij prosty obraz testowy i porównaj go z podglądem. Postęp oznacza zakończone zapisy GATT, a nie potwierdzenie wyglądu obrazu.
-3. Jeśli wystąpi błąd zapisu 320 B, przetestuj 80 B, a dopiero potem 20 B. Zapisz rozmiar zapisu, przeglądarkę, system, linię/procent błędu i ostatnią odpowiedź BLE. Te dane pomogą dobrać poprawny sposób transmisji dla Twojego egzemplarza.
+1. Otwórz [adres z numerem wersji](https://codekexplor.github.io/-Web-smART-Sketcher-2.0-/?v=20260924-3). Na dole strony musi być napis **Wersja 2026.09.24.3**. Zamknij wcześniej otwartą kartę lub zainstalowaną PWA. Zasoby JS/CSS mają numer wersji w adresie, a service worker pobiera aktualną wersję z sieci.
+2. Użyj domyślnej opcji **Cała linia · 320 B**.
+3. Wyślij prosty obraz testowy i porównaj go z podglądem. Postęp oznacza zakończone zapisy GATT, a nie potwierdzenie wyglądu obrazu.
+4. Jeśli wystąpi błąd zapisu 320 B, przetestuj 80 B, a dopiero potem 20 B. Zapisz rozmiar zapisu, przeglądarkę, system, linię/procent błędu i ostatnią odpowiedź BLE. Te dane pomogą dobrać poprawny sposób transmisji dla Twojego egzemplarza.
 
 ## Development
 
@@ -71,6 +72,8 @@ Do testu strony użyj prostego lokalnego serwera statycznego, np. `python -m htt
 ## GitHub Pages
 
 Strona jest opublikowana pod adresem **https://codekexplor.github.io/-Web-smART-Sketcher-2.0-/**. GitHub Pages pobiera pliki z gałęzi `main`, z katalogu `/ (root)`. Po wypchnięciu zmian do `main` GitHub publikuje nową wersję automatycznie. Ścieżki aplikacji są względne i działają w podkatalogu projektu.
+
+Przy kolejnej zmianie plików aplikacji należy zwiększyć numer wersji w `index.html`, `manifest.webmanifest`, importach modułów JS oraz `service-worker.js`. GitHub Pages wysyła pliki z nagłówkiem cache, więc pozwala to przeglądarce pobrać spójny zestaw nowych plików.
 
 Web Bluetooth wymaga bezpiecznego kontekstu: HTTPS albo `localhost` ([Chrome](https://developer.chrome.com/docs/capabilities/bluetooth)). Dostępność na konkretnym systemie i w konkretnej przeglądarce trzeba sprawdzić lokalnie.
 
