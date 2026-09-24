@@ -1,7 +1,9 @@
-import { DEFAULT_SERVICE_UUID, HEIGHT } from './config.js?v=20260924-7';
-import { SketcherBluetooth, BluetoothFailure } from './bluetooth.js?v=20260924-7';
-import { loadImage, loadImageFromUrl, renderImage } from './imageProcessor.js?v=20260924-7';
-import { sendImage } from './protocol.js?v=20260924-7';
+import { DEFAULT_SERVICE_UUID, HEIGHT } from './config.js?v=20260924-8';
+import { SketcherBluetooth, BluetoothFailure } from './bluetooth.js?v=20260924-8';
+import { loadImage, loadImageFromUrl, renderImage } from './imageProcessor.js?v=20260924-8';
+import { sendImage } from './protocol.js?v=20260924-8';
+import { renderText } from './textRenderer.js?v=20260924-8';
+import { listLocalFonts, loadFont, validateFontFile } from './fontManager.js?v=20260924-8';
 
 const $ = id => document.getElementById(id);
 const ui = {
@@ -9,6 +11,8 @@ const ui = {
   service: $('service-uuid'), device: $('device-name'), status: $('status-text'), pill: $('status-pill'), notification: $('last-notification'),
   file: $('file-input'), chooseFile: $('choose-file-button'), drop: $('drop-zone'), fileName: $('file-name'), canvas: $('preview'),
   imageUrlForm: $('image-url-form'), imageUrl: $('image-url'), loadUrl: $('load-url-button'),
+  imagePanel: $('image-panel'), textPanel: $('text-panel'), textContent: $('text-content'), listFonts: $('list-fonts'), fontFile: $('font-file'), fontChoice: $('font-choice'), fontMessage: $('font-message'),
+  textSize: $('text-size'), textSizeValue: $('text-size-value'), lineSpacing: $('line-spacing'), lineSpacingValue: $('line-spacing-value'), textAlign: $('text-align'), textColor: $('text-color'), textBackground: $('text-background'),
   zoom: $('zoom'), zoomValue: $('zoom-value'), preserveLines: $('preserve-lines'), rotationValue: $('rotation-value'), rotateLeft: $('rotate-left'), rotateRight: $('rotate-right'), resetTransform: $('reset-transform'),
   panX: $('pan-x'), panXValue: $('pan-x-value'), panY: $('pan-y'), panYValue: $('pan-y-value'),
   lineThickness: $('line-thickness'), lineThicknessValue: $('line-thickness-value'), contrast: $('contrast'), contrastValue: $('contrast-value'), brightness: $('brightness'), brightnessValue: $('brightness-value'),
@@ -22,6 +26,15 @@ let busy = false;
 let loading = false;
 let state = 'disconnected';
 let rotation = 0;
+let source = 'image';
+const sourceSettings = {
+  image: { panX: '0', panY: '0', lineThickness: '0', contrast: '100', brightness: '0' },
+  text: { panX: '0', panY: '0', lineThickness: '0', contrast: '100', brightness: '0' }
+};
+let localFonts = [];
+const loadedFonts = new Map();
+let fontCss = 'sans-serif';
+let selectedFontKey = 'sans-serif';
 const bluetooth = new SketcherBluetooth({
   onStage: (stage, name) => { if (name) ui.device.textContent = name; setStatus(stage); },
   onDisconnect: () => { setStatus('disconnected'); showMessage('Urządzenie zostało odłączone.', true); },
@@ -40,10 +53,11 @@ function updateButtons() {
   ui.disconnect.disabled = busy || connecting || !bluetooth.connected;
   ui.send.disabled = busy || loading || !frame || !bluetooth.connected;
   ui.service.disabled = busy || connecting;
-  for (const control of [ui.chooseFile, ui.file, ui.imageUrl, ui.loadUrl]) control.disabled = busy || loading;
-  for (const control of [ui.zoom, ui.preserveLines, ui.rotateLeft, ui.rotateRight, ui.resetTransform, ui.panX, ui.panY, ui.lineThickness, ui.contrast, ui.brightness]) control.disabled = busy || loading || !image;
-  ui.canvas.classList.toggle('is-draggable', Boolean(image) && !busy && !loading);
-  for (const radio of document.querySelectorAll('input[name="mode"]')) radio.disabled = busy || loading;
+  for (const control of [ui.chooseFile, ui.file, ui.imageUrl, ui.loadUrl, ui.textContent, ui.listFonts, ui.fontFile, ui.fontChoice, ui.textSize, ui.lineSpacing, ui.textAlign, ui.textColor, ui.textBackground]) control.disabled = busy || loading;
+  for (const control of [ui.zoom, ui.preserveLines, ui.rotateLeft, ui.rotateRight, ui.resetTransform]) control.disabled = busy || loading || !image || source !== 'image';
+  for (const control of [ui.panX, ui.panY, ui.lineThickness, ui.contrast, ui.brightness]) control.disabled = busy || loading || (source === 'image' && !image);
+  ui.canvas.classList.toggle('is-draggable', Boolean(frame) && !busy && !loading);
+  for (const radio of document.querySelectorAll('input[name="mode"], input[name="source"]')) radio.disabled = busy || loading;
 }
 function showMessage(text, isError = false) { ui.message.textContent = text; ui.message.classList.toggle('error', isError); }
 function friendlyError(error) {
@@ -77,9 +91,38 @@ function imageOptions() {
     contrast: Number(ui.contrast.value), brightness: Number(ui.brightness.value)
   };
 }
+function textOptions() {
+  return {
+    text: ui.textContent.value, font: fontCss, maxSize: Number(ui.textSize.value), lineSpacing: Number(ui.lineSpacing.value) / 100,
+    align: ui.textAlign.value, color: ui.textColor.value, background: ui.textBackground.value,
+    panX: Number(ui.panX.value), panY: Number(ui.panY.value), lineThickness: Number(ui.lineThickness.value),
+    contrast: Number(ui.contrast.value), brightness: Number(ui.brightness.value)
+  };
+}
+function clearPreview(color = '#ffffff') {
+  const ctx = ui.canvas.getContext('2d');
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, ui.canvas.width, ui.canvas.height);
+}
 function refreshPreview() {
-  if (!image || busy || loading) return;
-  frame = renderImage(ui.canvas, image, document.querySelector('input[name="mode"]:checked').value, imageOptions());
+  if (busy || loading) return;
+  if (source === 'text') {
+    try {
+      frame = renderText(ui.canvas, textOptions());
+      showMessage('');
+    } catch (error) {
+      frame = null;
+      clearPreview(ui.textBackground.value);
+      showMessage(error?.message || 'Nie można przygotować napisu.', true);
+    }
+  } else if (image) {
+    frame = renderImage(ui.canvas, image, document.querySelector('input[name="mode"]:checked').value, imageOptions());
+    showMessage('');
+  } else {
+    frame = null;
+    clearPreview();
+    showMessage('');
+  }
   updateButtons();
 }
 async function useImage(loader, label) {
@@ -126,6 +169,103 @@ ui.imageUrlForm.addEventListener('submit', event => {
   const url = ui.imageUrl.value.trim();
   if (url) useImage(() => loadImageFromUrl(url), `URL: ${url}`);
 });
+for (const radio of document.querySelectorAll('input[name="source"]')) radio.addEventListener('change', () => {
+  if (!radio.checked || busy || loading) return;
+  for (const key of ['panX', 'panY', 'lineThickness', 'contrast', 'brightness']) sourceSettings[source][key] = ui[key].value;
+  source = radio.value;
+  for (const [key, output, suffix] of [
+    ['panX', ui.panXValue, ' px'], ['panY', ui.panYValue, ' px'], ['lineThickness', ui.lineThicknessValue, '%'],
+    ['contrast', ui.contrastValue, '%'], ['brightness', ui.brightnessValue, '']
+  ]) { ui[key].value = sourceSettings[source][key]; output.value = `${ui[key].value}${suffix}`; }
+  ui.imagePanel.hidden = source !== 'image';
+  ui.textPanel.hidden = source !== 'text';
+  for (const element of document.querySelectorAll('.image-only')) element.hidden = source !== 'image';
+  for (const element of document.querySelectorAll('.text-only')) element.hidden = source !== 'text';
+  frame = null;
+  try { refreshPreview(); }
+  catch (error) { report(error); updateButtons(); }
+});
+function showFontMessage(message, isError = false) {
+  ui.fontMessage.textContent = message;
+  ui.fontMessage.classList.toggle('error', isError);
+}
+ui.listFonts.addEventListener('click', async () => {
+  if (busy || loading) return;
+  loading = true; updateButtons(); showFontMessage('Odczytuję listę czcionek…');
+  try {
+    const fonts = await listLocalFonts(window.queryLocalFonts?.bind(window));
+    if (!fonts.length) throw new Error('Nie znaleziono dostępnych czcionek. Możesz wczytać plik czcionki.');
+    if (selectedFontKey.startsWith('local:')) { selectedFontKey = 'sans-serif'; fontCss = 'sans-serif'; }
+    for (const option of ui.fontChoice.querySelectorAll('option[data-local]')) option.remove();
+    for (const [key, loaded] of loadedFonts) if (key.startsWith('local:')) { document.fonts.delete(loaded.face); loadedFonts.delete(key); }
+    localFonts = fonts;
+    fonts.forEach((font, index) => {
+      const option = new Option(`${font.fullName} — ${font.style}`, `local:${index}`);
+      option.dataset.local = 'true';
+      ui.fontChoice.add(option);
+    });
+    ui.fontChoice.value = selectedFontKey;
+    showFontMessage(`Dostępnych czcionek: ${fonts.length}. Wybierz jedną z listy.`);
+  } catch (error) { showFontMessage(error.message, true); }
+  finally { loading = false; updateButtons(); if (source === 'text') refreshPreview(); }
+});
+async function activateFont(key, sourceLoader, label, replace = false) {
+  if (busy || loading) return;
+  if (loadedFonts.has(key) && !replace) {
+    fontCss = loadedFonts.get(key).css;
+    selectedFontKey = key;
+    ui.fontChoice.value = key;
+    showFontMessage(`Wybrano: ${label}`);
+    refreshPreview();
+    return;
+  }
+  loading = true; updateButtons(); showFontMessage(`Wczytuję: ${label}…`);
+  try {
+    const next = await loadFont(await sourceLoader());
+    if (key === 'uploaded' && loadedFonts.has(key)) document.fonts.delete(loadedFonts.get(key).face);
+    loadedFonts.set(key, next);
+    fontCss = next.css;
+    selectedFontKey = key;
+    if (key === 'uploaded') {
+      let option = ui.fontChoice.querySelector('option[value="uploaded"]');
+      if (!option) { option = new Option(label, key); ui.fontChoice.add(option); }
+      option.textContent = label;
+    }
+    ui.fontChoice.value = key;
+    showFontMessage(`Wybrano: ${label}`);
+  } catch (error) {
+    ui.fontChoice.value = selectedFontKey;
+    showFontMessage(error.message, true);
+  } finally { loading = false; updateButtons(); if (source === 'text') refreshPreview(); }
+}
+ui.fontChoice.addEventListener('change', () => {
+  const key = ui.fontChoice.value;
+  if (key.startsWith('local:')) {
+    const font = localFonts[Number(key.slice(6))];
+    if (font) activateFont(key, () => font.blob(), font.fullName);
+    return;
+  }
+  if (key === 'uploaded') {
+    activateFont(key, () => Promise.reject(new Error('Ponownie wybierz plik czcionki.')), ui.fontChoice.selectedOptions[0].textContent);
+    return;
+  }
+  fontCss = key;
+  selectedFontKey = key;
+  showFontMessage('');
+  if (source === 'text') refreshPreview();
+});
+ui.fontFile.addEventListener('change', () => {
+  const file = ui.fontFile.files[0];
+  ui.fontFile.value = '';
+  if (!file) return;
+  try { validateFontFile(file); activateFont('uploaded', () => file, file.name, true); }
+  catch (error) { showFontMessage(error.message, true); }
+});
+ui.textContent.addEventListener('input', () => refreshPreview());
+for (const [input, output, suffix] of [[ui.textSize, ui.textSizeValue, ' px'], [ui.lineSpacing, ui.lineSpacingValue, '%']]) {
+  input.addEventListener('input', () => { output.value = `${input.value}${suffix}`; refreshPreview(); });
+}
+for (const input of [ui.textAlign, ui.textColor, ui.textBackground]) input.addEventListener('input', () => refreshPreview());
 for (const radio of document.querySelectorAll('input[name="mode"]')) radio.addEventListener('change', () => {
   if (!radio.checked) return;
   try { refreshPreview(); }
@@ -155,7 +295,7 @@ function setPan(x, y) {
 }
 let drag = null;
 ui.canvas.addEventListener('pointerdown', event => {
-  if (!image || busy || loading || event.button !== 0) return;
+  if (!frame || busy || loading || event.button !== 0) return;
   drag = { id: event.pointerId, x: event.clientX, y: event.clientY, panX: Number(ui.panX.value), panY: Number(ui.panY.value) };
   ui.canvas.setPointerCapture(event.pointerId);
   ui.canvas.classList.add('is-dragging');
@@ -177,7 +317,7 @@ ui.canvas.addEventListener('pointerup', endDrag);
 ui.canvas.addEventListener('pointercancel', endDrag);
 ui.canvas.addEventListener('lostpointercapture', endDrag);
 ui.canvas.addEventListener('keydown', event => {
-  if (!image || busy || loading) return;
+  if (!frame || busy || loading) return;
   const moves = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
   const move = moves[event.key];
   if (!move) return;

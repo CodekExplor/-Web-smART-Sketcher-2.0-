@@ -1,4 +1,4 @@
-import { WIDTH, HEIGHT } from './config.js?v=20260924-7';
+import { WIDTH, HEIGHT } from './config.js?v=20260924-8';
 
 export function placement(sourceWidth, sourceHeight, mode, targetWidth = WIDTH, targetHeight = HEIGHT) {
   if (![sourceWidth, sourceHeight, targetWidth, targetHeight].every(value => Number.isFinite(value) && value > 0) || !['fit', 'fill'].includes(mode)) throw new RangeError('Nieprawidłowy rozmiar obrazu lub tryb.');

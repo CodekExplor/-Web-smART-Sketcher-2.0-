@@ -4,18 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#102b39">
-  <meta name="description" content="Wyślij własny obraz do smART Sketcher 2.0 prosto z przeglądarki.">
-  <link rel="manifest" href="./manifest.webmanifest?v=20260924-7">
+  <meta name="description" content="Wyślij własny obraz lub napis do smART Sketcher 2.0 prosto z przeglądarki.">
+  <link rel="manifest" href="./manifest.webmanifest?v=20260924-8">
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./css/styles.css?v=20260924-7">
+  <link rel="stylesheet" href="./css/styles.css?v=20260924-8">
   <title>Smart Sketcher Web</title>
 </head>
 <body>
   <main class="shell">
     <header class="hero">
       <div class="brand"><span class="brand-mark" aria-hidden="true">✳</span> Smart Sketcher Web</div>
-      <h1>Twój obraz.<br><span>Prosto do projektora.</span></h1>
-      <p>Połącz smART Sketcher 2.0, dopasuj obraz i wyślij go przez Bluetooth. Wszystko działa w przeglądarce.</p>
+      <h1>Twój projekt.<br><span>Prosto do projektora.</span></h1>
+      <p>Połącz smART Sketcher 2.0, przygotuj obraz lub napis i wyślij go przez Bluetooth. Wszystko działa w przeglądarce.</p>
     </header>
 
     <div id="support-message" class="notice" role="alert" hidden></div>
@@ -31,7 +31,9 @@
     </section>
 
     <section class="card" aria-labelledby="image-title">
-      <div class="section-head"><span class="step">02</span><div><h2 id="image-title">Obraz</h2><p>Wybierz i dopasuj do kadru 160 × 128</p></div></div>
+      <div class="section-head"><span class="step">02</span><div><h2 id="image-title">Projekt</h2><p>Przygotuj obraz lub napis do kadru 160 × 128</p></div></div>
+      <fieldset class="source-choice"><legend>Co chcesz wysłać?</legend><label><input type="radio" name="source" value="image" checked> Obraz</label><label><input type="radio" name="source" value="text"> Napis</label></fieldset>
+      <div id="image-panel">
       <div id="drop-zone" class="drop-zone"><div class="drop-icon" aria-hidden="true">↥</div><strong>Przeciągnij obraz tutaj</strong><span>lub</span><button id="choose-file-button" class="button secondary file-button" type="button">Wybierz obraz</button><input id="file-input" type="file" accept="image/png,image/jpeg,image/webp,image/bmp,.bmp" hidden aria-label="Wybierz plik obrazu"><small>PNG, JPG, WEBP lub BMP · plik pozostaje w Twojej przeglądarce</small></div>
       <form id="image-url-form" class="image-url-form">
         <label for="image-url">Lub wczytaj zdjęcie z URL</label>
@@ -40,14 +42,30 @@
       </form>
       <p id="file-name" class="file-name" aria-live="polite">Nie wybrano obrazu</p>
       <fieldset class="mode-choice"><legend>Tryb dopasowania</legend><label><input type="radio" name="mode" value="fit" checked><span>Dopasuj <small>cały obraz, białe marginesy</small></span></label><label><input type="radio" name="mode" value="fill"><span>Wypełnij <small>pełny kadr, możliwe przycięcie</small></span></label></fieldset>
-      <div class="adjustments" aria-label="Kadrowanie i wygląd obrazu">
-        <div class="adjustment-heading"><label for="zoom">Skala obrazu</label><output id="zoom-value" for="zoom">100%</output></div>
-        <input id="zoom" type="range" min="50" max="300" step="5" value="100" disabled>
-        <label class="preserve-lines"><input id="preserve-lines" type="checkbox" checked disabled><span>Zachowaj cienkie linie <small>przy skali poniżej 100%; wyłącz dla zdjęć</small></span></label>
-        <div class="rotation-row"><span>Obrót</span><div class="rotation-buttons"><button id="rotate-left" class="button secondary" type="button" aria-label="Obróć obraz o 90 stopni w lewo" disabled>↶ 90° w lewo</button><button id="rotate-right" class="button secondary" type="button" aria-label="Obróć obraz o 90 stopni w prawo" disabled>↷ 90° w prawo</button><button id="reset-transform" class="button secondary" type="button" disabled>Resetuj ustawienia</button></div><output id="rotation-value" aria-live="polite">0°</output></div>
+      </div>
+      <div id="text-panel" class="text-panel" hidden>
+        <label for="text-content">Twój napis</label>
+        <textarea id="text-content" rows="4" maxlength="500" placeholder="Wpisz napis (możesz użyć kilku wierszy)"></textarea>
+        <div class="text-font-row"><button id="list-fonts" class="button secondary" type="button">Pokaż czcionki z komputera</button><label for="font-file">Lub wybierz plik czcionki</label><input id="font-file" type="file" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2"></div>
+        <label for="font-choice">Czcionka</label>
+        <select id="font-choice"><option value="sans-serif">Domyślna bezszeryfowa</option><option value="serif">Domyślna szeryfowa</option><option value="monospace">Domyślna maszynowa</option></select>
+        <p id="font-message" class="font-message" role="status" aria-live="polite"></p>
+        <div class="adjustment-heading"><label for="text-size">Maksymalny rozmiar</label><output id="text-size-value" for="text-size">32 px</output></div>
+        <input id="text-size" type="range" min="6" max="72" step="1" value="32">
+        <div class="adjustment-heading"><label for="line-spacing">Odstęp między wierszami</label><output id="line-spacing-value" for="line-spacing">120%</output></div>
+        <input id="line-spacing" type="range" min="80" max="180" step="5" value="120">
+        <div class="text-detail-row"><label for="text-align">Wyrównanie <select id="text-align"><option value="center">Środek</option><option value="left">Do lewej</option><option value="right">Do prawej</option></select></label><label for="text-color">Kolor tekstu <input id="text-color" type="color" value="#000000"></label><label for="text-background">Kolor tła <input id="text-background" type="color" value="#ffffff"></label></div>
+        <p>Rozmiar zmniejszy się automatycznie, jeśli napis nie mieści się w kadrze. Czcionki pozostają w Twojej przeglądarce.</p>
+      </div>
+      <div class="adjustments" aria-label="Położenie i wygląd projekcji">
+        <div class="adjustment-heading image-only"><label for="zoom">Skala obrazu</label><output id="zoom-value" for="zoom">100%</output></div>
+        <input id="zoom" class="image-only" type="range" min="50" max="300" step="5" value="100" disabled>
+        <label class="preserve-lines image-only"><input id="preserve-lines" type="checkbox" checked disabled><span>Zachowaj cienkie linie <small>przy skali poniżej 100%; wyłącz dla zdjęć</small></span></label>
+        <div class="rotation-row image-only"><span>Obrót</span><div class="rotation-buttons"><button id="rotate-left" class="button secondary" type="button" aria-label="Obróć obraz o 90 stopni w lewo" disabled>↶ 90° w lewo</button><button id="rotate-right" class="button secondary" type="button" aria-label="Obróć obraz o 90 stopni w prawo" disabled>↷ 90° w prawo</button><button id="reset-transform" class="button secondary" type="button" disabled>Resetuj ustawienia</button></div><output id="rotation-value" aria-live="polite">0°</output></div>
         <div class="adjustment-group">
-          <h3>Kadrowanie</h3>
-          <p>Powiększ obraz suwakiem skali, a potem przeciągnij podgląd, aby wybrać fragment. Możesz też ustawić położenie suwakami lub strzałkami na klawiaturze.</p>
+          <h3>Położenie w kadrze</h3>
+          <p class="image-only">Powiększ obraz suwakiem skali, a potem przeciągnij podgląd, aby wybrać fragment. Możesz też ustawić położenie suwakami lub strzałkami na klawiaturze.</p>
+          <p class="text-only" hidden>Przesuń napis suwakami albo przeciągnij podgląd. Strzałki na klawiaturze przesuwają go o 1 px, z klawiszem Shift o 5 px.</p>
           <div class="adjustment-heading"><label for="pan-x">Przesunięcie w poziomie</label><output id="pan-x-value" for="pan-x">0 px</output></div>
           <input id="pan-x" type="range" min="-80" max="80" step="1" value="0" disabled>
           <div class="adjustment-heading"><label for="pan-y">Przesunięcie w pionie</label><output id="pan-y-value" for="pan-y">0 px</output></div>
@@ -61,17 +79,17 @@
           <input id="contrast" type="range" min="50" max="200" step="5" value="100" disabled>
           <div class="adjustment-heading"><label for="brightness">Jasność</label><output id="brightness-value" for="brightness">0</output></div>
           <input id="brightness" type="range" min="-80" max="80" step="5" value="0" disabled>
-          <p>Grubość linii najlepiej sprawdza się przy czarnych rysunkach na białym tle. Podgląd pokazuje piksele wysyłane do projektora.</p>
+          <p>Grubość linii najlepiej sprawdza się przy ciemnych kształtach na jasnym tle. Podgląd pokazuje piksele wysyłane do projektora.</p>
         </div>
       </div>
       <div class="preview-head"><h3>Podgląd końcowy</h3><span>160 × 128 px · RGB565</span></div>
-      <div class="preview-wrap"><canvas id="preview" width="160" height="128" tabindex="0" role="img" aria-label="Podgląd obrazu przygotowanego do wysłania. Przeciągnij, aby przesunąć kadr, lub użyj strzałek na klawiaturze."></canvas></div>
+      <div class="preview-wrap"><canvas id="preview" width="160" height="128" tabindex="0" role="img" aria-label="Podgląd projekcji. Przeciągnij, aby przesunąć zawartość, lub użyj strzałek na klawiaturze."></canvas></div>
       <button id="send-button" class="button primary send-button" type="button" disabled>Wyślij do projektora <span aria-hidden="true">→</span></button>
       <div id="progress-area" class="progress-area" hidden><div class="progress-label"><span id="progress-text">Wysyłanie: 0 / 128</span><strong id="progress-percent">0%</strong></div><progress id="progress-bar" max="128" value="0">0%</progress></div>
       <p id="message" class="message" aria-live="polite"></p>
     </section>
-    <footer>Wymagana przeglądarka Chrome lub Edge, HTTPS i Bluetooth Low Energy. Protokół wymaga potwierdzenia na fizycznym urządzeniu.<br><span id="app-version">Wersja 2026.09.24.7</span></footer>
+    <footer>Wymagana przeglądarka Chrome lub Edge, HTTPS i Bluetooth Low Energy. Protokół wymaga potwierdzenia na fizycznym urządzeniu.<br><span id="app-version">Wersja 2026.09.24.8</span></footer>
   </main>
-  <script type="module" src="./js/app.js?v=20260924-7"></script>
+  <script type="module" src="./js/app.js?v=20260924-8"></script>
 </body>
 </html>
