@@ -1,4 +1,4 @@
-const CACHE = 'smart-sketcher-web-v1';
+const CACHE = 'smart-sketcher-web-v2';
 const ASSETS = ['./', './index.html', './css/styles.css', './js/app.js', './js/bluetooth.js', './js/config.js', './js/imageProcessor.js', './js/protocol.js', './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png'];
 self.addEventListener('install', event => { event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS))); self.skipWaiting(); });
 self.addEventListener('activate', event => { event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key))))); self.clients.claim(); });

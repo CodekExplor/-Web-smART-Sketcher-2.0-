@@ -1,6 +1,6 @@
 # Smart Sketcher Web
 
-Statyczna aplikacja do przygotowania obrazu i wysłania go przez Web Bluetooth do smART Sketcher 2.0. Kod działa w przeglądarce bez backendu. **Połączenie i transmisja wymagają weryfikacji na fizycznym urządzeniu** (`requires hardware verification`).
+Statyczna aplikacja do przygotowania obrazu i wysłania go przez Web Bluetooth do smART Sketcher 2.0. Kod działa w przeglądarce bez backendu. Użytkownik potwierdził połączenie z projektorem, ale poprawność transmisji obrazu nadal wymaga weryfikacji na fizycznym urządzeniu (`requires hardware verification`).
 
 ## Użycie
 
@@ -47,9 +47,15 @@ Odczyt usług w `bluetooth-internals` zależy od wersji przeglądarki i platform
 
 ### Transmisja i ograniczenia
 
-Każdy wiersz ma 320 bajtów. Web Bluetooth nie udostępnia przenośnego API do odczytu uzgodnionego ATT MTU, więc aplikacja dzieli wiersz na domyślne fragmenty po 20 bajtów i zapisuje je sekwencyjnie. Używa zapisu z odpowiedzią, jeśli charakterystyka go oferuje, inaczej zapisu bez odpowiedzi. Po całym wierszu czeka na powiadomienie `OK` (także zawarte w `OKOK`); przy braku potwierdzenia zgłasza timeout i zatrzymuje transfer. Dodatkowo stosuje odstęp 5 ms między fragmentami i 50 ms między wierszami. Wszystkie wartości można zmienić w `js/config.js` po pomiarach na sprzęcie. `writeValueWithResponse()` oznacza odpowiedź na zapis GATT, a nie potwierdzenie przyjęcia całej linii przez protokół projektora ([MDN](https://developer.mozilla.org/en-US/docs/Web/API/BluetoothRemoteGATTCharacteristic/writeValueWithResponse)).
+Każdy wiersz ma 320 bajtów. Domyślnie aplikacja wykonuje **jeden zapis charakterystyki na całą linię**, tak jak `sketcher.py`, z odstępem 50 ms przed każdą linią. Używa zapisu z odpowiedzią, jeśli charakterystyka go oferuje, inaczej zapisu bez odpowiedzi. Powiadomienia są wyświetlane diagnostycznie w ustawieniach, lecz nie blokują kolejnych linii: w pierwszej wersji użytkownik zobaczył przerywane linie oraz timeout przy domyślnym dzieleniu na 20-bajtowe zapisy i oczekiwaniu na `OK`. `writeValueWithResponse()` potwierdza zapis GATT, nie poprawne wyświetlenie linii przez projektor ([MDN](https://developer.mozilla.org/en-US/docs/Web/API/BluetoothRemoteGATTCharacteristic/writeValueWithResponse)).
 
-Niepotwierdzone na sprzęcie są: UUID usługi, własności FFE3, akceptowanie 20-bajtowych fragmentów jako strumienia jednej linii, dokładna semantyka `OK` oraz czasy potrzebne adapterowi i projektorowi. Każdy punkt jest `requires hardware verification`. Aplikacja nie wznawia przerwanej linii, ponieważ protokół nie podaje bezpiecznego sposobu ponowienia.
+Jeśli przeglądarka odrzuca zapis 320 B, w **Ustawieniach połączenia i transmisji** można wybrać 80 B albo 20 B. Te warianty są eksperymentalne: Web Bluetooth nie udostępnia przenośnego API do odczytu uzgodnionego ATT MTU, a mniejsze osobne zapisy mogą być interpretowane przez projektor inaczej niż jeden zapis linii. Stosowany jest odstęp 5 ms między fragmentami. Nie wznawiamy przerwanej linii, ponieważ protokół nie podaje bezpiecznego sposobu ponowienia. Wielkość zapisu, dokładna semantyka `OK` i czasy wymagane przez adapter pozostają `requires hardware verification`.
+
+### Gdy obraz ma poziome przerwy
+
+1. Odśwież stronę i użyj domyślnej opcji **Cała linia · 320 B**. Zamknij zainstalowaną PWA przed ponownym otwarciem, aby pobrała nową wersję.
+2. Wyślij prosty obraz testowy i porównaj go z podglądem. Postęp oznacza zakończone zapisy GATT, a nie potwierdzenie wyglądu obrazu.
+3. Jeśli wystąpi błąd zapisu 320 B, przetestuj 80 B, a dopiero potem 20 B. Zapisz rozmiar zapisu, przeglądarkę, system, linię/procent błędu i ostatnią odpowiedź BLE. Te dane pomogą dobrać poprawny sposób transmisji dla Twojego egzemplarza.
 
 ## Development
 
@@ -64,10 +70,7 @@ Do testu strony użyj prostego lokalnego serwera statycznego, np. `python -m htt
 
 ## GitHub Pages
 
-1. Umieść zawartość tego katalogu w repozytorium GitHub.
-2. W repozytorium otwórz **Settings → Pages**.
-3. W **Build and deployment** wybierz **Deploy from a branch**, gałąź `main` i katalog `/ (root)`.
-4. Otwórz otrzymany adres `https://...github.io/.../` w Chrome/Edge. Wszystkie ścieżki aplikacji są względne, więc działają w podkatalogu projektu.
+Strona jest opublikowana pod adresem **https://codekexplor.github.io/-Web-smART-Sketcher-2.0-/**. GitHub Pages pobiera pliki z gałęzi `main`, z katalogu `/ (root)`. Po wypchnięciu zmian do `main` GitHub publikuje nową wersję automatycznie. Ścieżki aplikacji są względne i działają w podkatalogu projektu.
 
 Web Bluetooth wymaga bezpiecznego kontekstu: HTTPS albo `localhost` ([Chrome](https://developer.chrome.com/docs/capabilities/bluetooth)). Dostępność na konkretnym systemie i w konkretnej przeglądarce trzeba sprawdzić lokalnie.
 
@@ -82,6 +85,6 @@ Każdy punkt poniżej to `requires hardware verification`:
 - [ ] Wyślij obraz z odmiennymi kolorami po lewej i prawej oraz numerami wierszy, by sprawdzić kolejność i brak przesunięć.
 - [ ] Porównaj tryby **Dopasuj** i **Wypełnij** z podglądem 160 × 128.
 - [ ] Zapisz powiadomienia dla komendy, każdej linii i końca obrazu; sprawdź `OK`, `OKOK` i ewentualne `OK_01`.
-- [ ] Sprawdź, czy 20-bajtowe fragmenty składają się w jedną linię po stronie projektora. Jeśli nie, zbadaj wymagany framing i rozmiar pakietu.
+- [ ] Porównaj jeden zapis 320 B na linię z wariantami 80 B i 20 B; sprawdź, czy projektor nie traktuje fragmentów jako oddzielnych linii.
 - [ ] Przetestuj timeout, brak usługi, brak charakterystyki i błąd zapisu na co najmniej dwóch adapterach Bluetooth.
 - [ ] Przetestuj instalację PWA oraz połączenie z uruchomionej aplikacji w Chrome i Edge na Windows.

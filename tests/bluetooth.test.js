@@ -69,7 +69,7 @@ test('mock BLE completes two lines from split and bundled OK notifications', asy
     }
   };
   const progress = [];
-  await sendImage(transport, Uint8Array.from({ length: 16 }, (_, i) => i), { width: 4, height: 2, chunkSize: 4, lineGapMs: 0, chunkGapMs: 0, ackTimeoutMs: 100, pause: async () => {}, onProgress: line => progress.push(line) });
+  await sendImage(transport, Uint8Array.from({ length: 16 }, (_, i) => i), { width: 4, height: 2, chunkSize: 4, waitForAck: true, lineGapMs: 0, chunkGapMs: 0, ackTimeoutMs: 100, pause: async () => {}, onProgress: line => progress.push(line) });
   assert.deepEqual(progress, [1, 2]);
   assert.equal(writes.length, 5);
   transport.disconnect();

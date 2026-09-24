@@ -10,16 +10,17 @@ export function chunkBytes(bytes, size = CHUNK_BYTES) {
 export const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 export async function sendImage(transport, frame, options = {}) {
-  const { width = WIDTH, height = HEIGHT, chunkSize = CHUNK_BYTES, lineGapMs = LINE_GAP_MS, chunkGapMs = CHUNK_GAP_MS, ackTimeoutMs = ACK_TIMEOUT_MS, onProgress = () => {}, pause = sleep } = options;
+  const { width = WIDTH, height = HEIGHT, chunkSize = width * 2, waitForAck = false, lineGapMs = LINE_GAP_MS, chunkGapMs = CHUNK_GAP_MS, ackTimeoutMs = ACK_TIMEOUT_MS, onProgress = () => {}, pause = sleep } = options;
   if (!(frame instanceof Uint8Array) || frame.length !== width * height * 2) throw new RangeError('Obraz musi mieć 160 × 128 pikseli RGB565.');
   if (!Number.isInteger(chunkSize) || chunkSize < 1) throw new RangeError('Nieprawidłowy rozmiar fragmentu.');
-  transport.clearAcks();
+  if (waitForAck) transport.clearAcks();
   await transport.write(sendImageCommand());
-  // A command response can arrive before the first line; it is not a line acknowledgement.
+  // The reference implementation waits 50 ms before each line. Notifications may be
+  // combined or missing, so they are diagnostics rather than the default pacing signal.
   await pause(lineGapMs);
-  transport.clearAcks();
+  if (waitForAck) transport.clearAcks();
   for (let line = 0; line < height; line++) {
-    transport.clearAcks();
+    if (waitForAck) transport.clearAcks();
     const bytes = frame.subarray(line * width * 2, (line + 1) * width * 2);
     const chunks = chunkBytes(bytes, chunkSize);
     debug('line', line + 1, 'chunks', chunks.length);
@@ -27,7 +28,7 @@ export async function sendImage(transport, frame, options = {}) {
       await transport.write(chunks[i]);
       if (i < chunks.length - 1 && chunkGapMs > 0) await pause(chunkGapMs);
     }
-    await transport.waitForAck(ackTimeoutMs);
+    if (waitForAck) await transport.waitForAck(ackTimeoutMs);
     onProgress(line + 1, height);
     if (line < height - 1 && lineGapMs > 0) await pause(lineGapMs);
   }

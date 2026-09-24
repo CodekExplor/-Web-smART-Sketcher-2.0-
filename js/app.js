@@ -6,7 +6,7 @@ import { sendImage } from './protocol.js';
 const $ = id => document.getElementById(id);
 const ui = {
   support: $('support-message'), connect: $('connect-button'), disconnect: $('disconnect-button'),
-  service: $('service-uuid'), device: $('device-name'), status: $('status-text'), pill: $('status-pill'),
+  service: $('service-uuid'), device: $('device-name'), status: $('status-text'), pill: $('status-pill'), notification: $('last-notification'),
   file: $('file-input'), chooseFile: $('choose-file-button'), drop: $('drop-zone'), fileName: $('file-name'), canvas: $('preview'),
   send: $('send-button'), progressArea: $('progress-area'), progress: $('progress-bar'),
   progressText: $('progress-text'), percent: $('progress-percent'), message: $('message')
@@ -20,6 +20,7 @@ let state = 'disconnected';
 const bluetooth = new SketcherBluetooth({
   onStage: (stage, name) => { if (name) ui.device.textContent = name; setStatus(stage); },
   onDisconnect: () => { setStatus('disconnected'); showMessage('Urządzenie zostało odłączone.', true); },
+  onNotification: message => { ui.notification.textContent = message || '(pusta odpowiedź)'; },
 });
 
 function setStatus(next) {
@@ -50,7 +51,7 @@ function friendlyError(error) {
     gatt: 'Błąd połączenia GATT. Sprawdź, czy urządzenie nie jest zajęte przez inną aplikację.',
     disconnected: 'Urządzenie zostało odłączone. Połącz je ponownie.',
     timeout: 'Projektor nie potwierdził odbioru linii w wyznaczonym czasie.',
-    write: 'Błąd zapisu BLE. Spróbuj połączyć urządzenie ponownie.',
+    write: 'Błąd zapisu BLE. Jeśli wystąpił przy 320 B, spróbuj 80 B w ustawieniach transmisji. W razie potrzeby połącz projektor ponownie.',
     busy: 'Trwa już oczekiwanie na odpowiedź urządzenia.'
   })[error.code] || 'Błąd komunikacji Bluetooth.';
 }
@@ -100,11 +101,12 @@ ui.drop.addEventListener('dragleave', () => ui.drop.classList.remove('dragging')
 ui.drop.addEventListener('drop', event => { event.preventDefault(); ui.drop.classList.remove('dragging'); useFile(event.dataTransfer.files[0]); });
 ui.send.addEventListener('click', async () => {
   if (!frame || !bluetooth.connected || busy) return;
+  const chunkSize = Number(document.querySelector('input[name="chunk-size"]:checked').value);
   busy = true; setStatus('sending'); showMessage('');
   ui.progressArea.hidden = false; updateProgress(0);
   try {
-    await sendImage(bluetooth, frame, { onProgress: updateProgress });
-    setStatus('ready'); showMessage('Obraz wysłany poprawnie');
+    await sendImage(bluetooth, frame, { chunkSize, onProgress: updateProgress });
+    setStatus('ready'); showMessage('Transmisja zakończona. Sprawdź obraz na projektorze.');
   } catch (error) { report(error); }
   finally { busy = false; updateButtons(); }
 });
