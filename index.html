@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#102b39">
+  <meta name="description" content="Wyślij własny obraz do smART Sketcher 2.0 prosto z przeglądarki.">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./css/styles.css">
+  <title>Smart Sketcher Web</title>
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">✳</span> Smart Sketcher Web</div>
+      <h1>Twój obraz.<br><span>Prosto do projektora.</span></h1>
+      <p>Połącz smART Sketcher 2.0, dopasuj obraz i wyślij go przez Bluetooth. Wszystko działa w przeglądarce.</p>
+    </header>
+
+    <div id="support-message" class="notice" role="alert" hidden></div>
+
+    <section class="card" aria-labelledby="bluetooth-title">
+      <div class="section-head"><span class="step">01</span><div><h2 id="bluetooth-title">Bluetooth</h2><p>Najpierw połącz projektor</p></div></div>
+      <div class="device-row">
+        <div><span class="eyebrow">Urządzenie</span><strong id="device-name">Nie wybrano</strong></div>
+        <div class="status-pill" id="status-pill"><span class="status-dot" aria-hidden="true"></span><span id="status-text" role="status" aria-live="polite">Rozłączono</span></div>
+      </div>
+      <div class="actions"><button id="connect-button" class="button primary" type="button">Połącz ze smART Sketcher</button><button id="disconnect-button" class="button secondary" type="button" disabled>Rozłącz</button></div>
+      <details class="advanced"><summary>Ustawienia połączenia</summary><label for="service-uuid">UUID usługi GATT</label><input id="service-uuid" type="text" spellcheck="false" autocomplete="off" aria-describedby="service-help"><p id="service-help">FFE0 to niepotwierdzona hipoteza. Jeśli połączenie nie znajdzie usługi, odczytaj jej UUID z urządzenia i wpisz tutaj przed ponowną próbą.</p></details>
+    </section>
+
+    <section class="card" aria-labelledby="image-title">
+      <div class="section-head"><span class="step">02</span><div><h2 id="image-title">Obraz</h2><p>Wybierz i dopasuj do kadru 160 × 128</p></div></div>
+      <div id="drop-zone" class="drop-zone"><div class="drop-icon" aria-hidden="true">↥</div><strong>Przeciągnij obraz tutaj</strong><span>lub</span><button id="choose-file-button" class="button secondary file-button" type="button">Wybierz obraz</button><input id="file-input" type="file" accept="image/png,image/jpeg,image/webp,image/bmp,.bmp" hidden aria-label="Wybierz plik obrazu"><small>PNG, JPG, WEBP lub BMP · plik pozostaje w Twojej przeglądarce</small></div>
+      <p id="file-name" class="file-name" aria-live="polite">Nie wybrano obrazu</p>
+      <fieldset class="mode-choice"><legend>Tryb dopasowania</legend><label><input type="radio" name="mode" value="fit" checked><span>Dopasuj <small>cały obraz, białe marginesy</small></span></label><label><input type="radio" name="mode" value="fill"><span>Wypełnij <small>pełny kadr, możliwe przycięcie</small></span></label></fieldset>
+      <div class="preview-head"><h3>Podgląd końcowy</h3><span>160 × 128 px · RGB565</span></div>
+      <div class="preview-wrap"><canvas id="preview" width="160" height="128" role="img" aria-label="Podgląd obrazu przygotowanego do wysłania"></canvas></div>
+      <button id="send-button" class="button primary send-button" type="button" disabled>Wyślij do projektora <span aria-hidden="true">→</span></button>
+      <div id="progress-area" class="progress-area" hidden><div class="progress-label"><span id="progress-text">Wysyłanie: 0 / 128</span><strong id="progress-percent">0%</strong></div><progress id="progress-bar" max="128" value="0">0%</progress></div>
+      <p id="message" class="message" aria-live="polite"></p>
+    </section>
+    <footer>Wymagana przeglądarka Chrome lub Edge, HTTPS i Bluetooth Low Energy. Protokół wymaga potwierdzenia na fizycznym urządzeniu.</footer>
+  </main>
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

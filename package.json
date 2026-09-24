@@ -1,0 +1,9 @@
+{
+  "name": "smart-sketcher-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "check": "node --check js/app.js && node --check js/bluetooth.js && node --check js/imageProcessor.js && node --check js/protocol.js && node --check js/config.js && node --check service-worker.js"
+  }
+}

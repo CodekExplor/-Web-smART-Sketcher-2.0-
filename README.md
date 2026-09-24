@@ -1,2 +1,87 @@
-# -Web-smART-Sketcher-2.0-
-Website to send pictures to  smART Sketcher 2.0
+# Smart Sketcher Web
+
+Statyczna aplikacja do przygotowania obrazu i wysłania go przez Web Bluetooth do smART Sketcher 2.0. Kod działa w przeglądarce bez backendu. **Połączenie i transmisja wymagają weryfikacji na fizycznym urządzeniu** (`requires hardware verification`).
+
+## Użycie
+
+1. Otwórz stronę w aktualnym Chrome lub Edge przez HTTPS albo `localhost`.
+2. Włącz smART Sketcher 2.0 i Bluetooth w komputerze.
+3. Kliknij **Połącz ze smART Sketcher** i wybierz urządzenie.
+4. Wybierz lub przeciągnij obraz PNG, JPG, WEBP albo BMP.
+5. Wybierz **Dopasuj** (cały obraz i białe marginesy) lub **Wypełnij** (środkowe przycięcie).
+6. Sprawdź końcowy podgląd i kliknij **Wyślij do projektora**.
+
+Plik obrazu jest przetwarzany lokalnie w przeglądarce. Aplikacja nie przesyła go na serwer. PWA można zainstalować z menu Chrome/Edge; działa nadal w przeglądarkowym runtime i wymaga dostępnego Bluetooth.
+
+## Analiza projektu źródłowego
+
+Podstawa: [`sketcher.py`](https://github.com/megakode/smart-sketcher-tools/blob/main/sketcher.py), [`requirements.txt`](https://github.com/megakode/smart-sketcher-tools/blob/main/requirements.txt) oraz [opis protokołu w README](https://github.com/megakode/smart-sketcher-tools/blob/main/README.md).
+
+| Element | Ustalenie |
+| --- | --- |
+| Wykrywanie | `BleakScanner.discover()` i ścisłe porównanie nazwy `smART_sketcher2.0`; opcjonalnie adres BLE z argumentu. |
+| Charakterystyka | `0000ffe3-0000-1000-8000-00805f9b34fb`, ta sama dla zapisu i powiadomień. |
+| Usługa GATT | **Nie została podana** w źródłowym repozytorium. |
+| Komenda | `01 00 00 00 50 00 01 00` przed obrazem. Parametry `0x50` i `0x01` nie są w pełni wyjaśnione w opisie źródłowym. |
+| Obraz | 160 × 128, wiersze poziome po 320 bajtów, RGB565 `RRRRRGGG GGGBBBBB`; najstarszy bajt piksela przed młodszym. |
+| Przepływ | Źródłowy README mówi o `OK` po każdej linii; wspomina też o czterech pakietach naraz. `sketcher.py` ignoruje odpowiedzi i odczekuje 50 ms przed każdą linią. |
+| Odpowiedzi | ASCII przez powiadomienia, możliwe `OKOK`; odpowiedź komendy może mieć postać `OK_01`. |
+| Zależności starej wersji | `asyncclick`, `anyio`, `progress`, `pillow`, `bleak`. Nowa aplikacja ich nie potrzebuje. |
+
+W `sketcher.py` drugi bajt RGB565 to `(g & 0x1c) << 3 | (g >> 3)`. Korzysta dwa razy z zieleni i pomija niebieski, a dolne bity zieleni też nie są składane poprawnie. Prawidłowa wartość to `((r & 0xf8) << 8) | ((g & 0xfc) << 3) | (b >> 3)`, następnie bajt starszy i młodszy. Stare `resize(160, 128)` rozciąga obraz niezależnie od proporcji. Samo ustawienie stanu na `1` dla każdego powiadomienia nie rozróżnia `OK`, `OKOK` ani błędów. Niejednoznaczny pozostaje też opis „4 packets at a time” wobec 320-bajtowych zapisów w Pythonie. Każdy z tych punktów transmisji jest `requires hardware verification`.
+
+## Migracja i architektura
+
+`Pillow` zastępuje Canvas, a `Bleak` zastępuje Web Bluetooth. `js/imageProcessor.js` dekoduje, kadruje, kwantyzuje podgląd i koduje RGB565. `js/protocol.js` buduje komendę i wysyła wiersze po kolei. `js/bluetooth.js` wyszukuje urządzenie, otwiera GATT, obsługuje powiadomienia i serializuje zapisy. `js/app.js` obsługuje formularz, stany i postęp. Wszystkie parametry są w `js/config.js`.
+
+Domyślna usługa `0000ffe0-0000-1000-8000-00805f9b34fb` jest **hipotezą**, wybraną jako tymczasowa konfiguracja dla charakterystyki FFE3. Nie pochodzi z repozytorium źródłowego. Można ją zmienić w **Ustawieniach połączenia** przed kliknięciem przycisku łączenia. Web Bluetooth wymaga zadeklarowania usługi w `optionalServices` już w momencie wyboru urządzenia; znajomość samej charakterystyki nie wystarcza. [Dokumentacja Chrome](https://developer.chrome.com/docs/capabilities/bluetooth) opisuje ten wymóg.
+
+### Jak ustalić UUID usługi
+
+1. Włącz projektor i rozłącz go z innymi aplikacjami.
+2. W Chrome/Edge otwórz `chrome://bluetooth-internals` lub `edge://bluetooth-internals`, wybierz kartę **Devices**, odszukaj `smART_sketcher2.0` i połącz się. Ewentualnie użyj skanera GATT, np. nRF Connect na telefonie.
+3. Rozwiń usługi GATT. Odszukaj charakterystykę `0000ffe3-0000-1000-8000-00805f9b34fb` i zapisz UUID **jej usługi nadrzędnej**. Nie myl UUID usługi z UUID charakterystyki.
+4. Wpisz UUID usługi w ustawieniach strony i połącz ponownie. Jeśli wynik jest stały dla tego modelu, ustaw go w `js/config.js` jako `DEFAULT_SERVICE_UUID`.
+
+Odczyt usług w `bluetooth-internals` zależy od wersji przeglądarki i platformy. Chrome opisuje ten panel w [przewodniku Web Bluetooth](https://developer.chrome.com/articles/bluetooth).
+
+### Transmisja i ograniczenia
+
+Każdy wiersz ma 320 bajtów. Web Bluetooth nie udostępnia przenośnego API do odczytu uzgodnionego ATT MTU, więc aplikacja dzieli wiersz na domyślne fragmenty po 20 bajtów i zapisuje je sekwencyjnie. Używa zapisu z odpowiedzią, jeśli charakterystyka go oferuje, inaczej zapisu bez odpowiedzi. Po całym wierszu czeka na powiadomienie `OK` (także zawarte w `OKOK`); przy braku potwierdzenia zgłasza timeout i zatrzymuje transfer. Dodatkowo stosuje odstęp 5 ms między fragmentami i 50 ms między wierszami. Wszystkie wartości można zmienić w `js/config.js` po pomiarach na sprzęcie. `writeValueWithResponse()` oznacza odpowiedź na zapis GATT, a nie potwierdzenie przyjęcia całej linii przez protokół projektora ([MDN](https://developer.mozilla.org/en-US/docs/Web/API/BluetoothRemoteGATTCharacteristic/writeValueWithResponse)).
+
+Niepotwierdzone na sprzęcie są: UUID usługi, własności FFE3, akceptowanie 20-bajtowych fragmentów jako strumienia jednej linii, dokładna semantyka `OK` oraz czasy potrzebne adapterowi i projektorowi. Każdy punkt jest `requires hardware verification`. Aplikacja nie wznawia przerwanej linii, ponieważ protokół nie podaje bezpiecznego sposobu ponowienia.
+
+## Development
+
+Testy jednostkowe i mock BLE wymagają tylko Node.js do uruchomienia lokalnego; Node.js nie jest backendem aplikacji:
+
+```sh
+node --test tests/*.test.js
+node --check js/app.js
+```
+
+Do testu strony użyj prostego lokalnego serwera statycznego, np. `python -m http.server 8000`, a następnie otwórz `http://localhost:8000`. Python jest tu wyłącznie opcjonalnym serwerem plików dla developmentu. Możesz użyć dowolnego serwera statycznego. Nie otwieraj strony przez `file://`; moduły ES i service worker wymagają serwowania przez HTTP(S).
+
+## GitHub Pages
+
+1. Umieść zawartość tego katalogu w repozytorium GitHub.
+2. W repozytorium otwórz **Settings → Pages**.
+3. W **Build and deployment** wybierz **Deploy from a branch**, gałąź `main` i katalog `/ (root)`.
+4. Otwórz otrzymany adres `https://...github.io/.../` w Chrome/Edge. Wszystkie ścieżki aplikacji są względne, więc działają w podkatalogu projektu.
+
+Web Bluetooth wymaga bezpiecznego kontekstu: HTTPS albo `localhost` ([Chrome](https://developer.chrome.com/docs/capabilities/bluetooth)). Dostępność na konkretnym systemie i w konkretnej przeglądarce trzeba sprawdzić lokalnie.
+
+## Checklista testu na prawdziwym projektorze
+
+Każdy punkt poniżej to `requires hardware verification`:
+
+- [ ] Potwierdź nazwę urządzenia w oknie wyboru i UUID usługi nadrzędnej dla FFE3.
+- [ ] Potwierdź właściwości FFE3: zapis z odpowiedzią lub bez odpowiedzi oraz notifications.
+- [ ] Połącz, rozłącz ręcznie i połącz ponownie; sprawdź zachowanie po wyłączeniu projektora w trakcie transferu.
+- [ ] Wyślij wzorzec pięciu kolorów: czarny, biały, czerwony, zielony, niebieski; porównaj barwy i kolejność bajtów.
+- [ ] Wyślij obraz z odmiennymi kolorami po lewej i prawej oraz numerami wierszy, by sprawdzić kolejność i brak przesunięć.
+- [ ] Porównaj tryby **Dopasuj** i **Wypełnij** z podglądem 160 × 128.
+- [ ] Zapisz powiadomienia dla komendy, każdej linii i końca obrazu; sprawdź `OK`, `OKOK` i ewentualne `OK_01`.
+- [ ] Sprawdź, czy 20-bajtowe fragmenty składają się w jedną linię po stronie projektora. Jeśli nie, zbadaj wymagany framing i rozmiar pakietu.
+- [ ] Przetestuj timeout, brak usługi, brak charakterystyki i błąd zapisu na co najmniej dwóch adapterach Bluetooth.
+- [ ] Przetestuj instalację PWA oraz połączenie z uruchomionej aplikacji w Chrome i Edge na Windows.

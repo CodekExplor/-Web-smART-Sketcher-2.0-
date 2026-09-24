@@ -1,0 +1,14 @@
+{
+  "name": "Smart Sketcher Web",
+  "short_name": "Sketcher Web",
+  "description": "Wyślij obraz do smART Sketcher 2.0 przez Bluetooth.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f7f6",
+  "theme_color": "#102b39",
+  "icons": [
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
