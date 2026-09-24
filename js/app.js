@@ -1,13 +1,14 @@
-import { DEFAULT_SERVICE_UUID, HEIGHT } from './config.js?v=20260924-3';
-import { SketcherBluetooth, BluetoothFailure } from './bluetooth.js?v=20260924-3';
-import { loadImage, renderImage } from './imageProcessor.js?v=20260924-3';
-import { sendImage } from './protocol.js?v=20260924-3';
+import { DEFAULT_SERVICE_UUID, HEIGHT } from './config.js?v=20260924-4';
+import { SketcherBluetooth, BluetoothFailure } from './bluetooth.js?v=20260924-4';
+import { loadImage, renderImage } from './imageProcessor.js?v=20260924-4';
+import { sendImage } from './protocol.js?v=20260924-4';
 
 const $ = id => document.getElementById(id);
 const ui = {
   support: $('support-message'), connect: $('connect-button'), disconnect: $('disconnect-button'),
   service: $('service-uuid'), device: $('device-name'), status: $('status-text'), pill: $('status-pill'), notification: $('last-notification'),
   file: $('file-input'), chooseFile: $('choose-file-button'), drop: $('drop-zone'), fileName: $('file-name'), canvas: $('preview'),
+  zoom: $('zoom'), zoomValue: $('zoom-value'), rotationValue: $('rotation-value'), rotateLeft: $('rotate-left'), rotateRight: $('rotate-right'), resetTransform: $('reset-transform'),
   send: $('send-button'), progressArea: $('progress-area'), progress: $('progress-bar'),
   progressText: $('progress-text'), percent: $('progress-percent'), message: $('message')
 };
@@ -17,6 +18,7 @@ let frame = null;
 let busy = false;
 let loading = false;
 let state = 'disconnected';
+let rotation = 0;
 const bluetooth = new SketcherBluetooth({
   onStage: (stage, name) => { if (name) ui.device.textContent = name; setStatus(stage); },
   onDisconnect: () => { setStatus('disconnected'); showMessage('Urządzenie zostało odłączone.', true); },
@@ -35,6 +37,8 @@ function updateButtons() {
   ui.disconnect.disabled = busy || connecting || !bluetooth.connected;
   ui.send.disabled = busy || loading || !frame || !bluetooth.connected;
   ui.service.disabled = busy || connecting;
+  for (const control of [ui.zoom, ui.rotateLeft, ui.rotateRight, ui.resetTransform]) control.disabled = busy || loading || !image;
+  for (const radio of document.querySelectorAll('input[name="mode"]')) radio.disabled = busy || loading;
 }
 function showMessage(text, isError = false) { ui.message.textContent = text; ui.message.classList.toggle('error', isError); }
 function friendlyError(error) {
@@ -61,12 +65,18 @@ function updateProgress(line) {
   ui.progressText.textContent = `Wysyłanie: ${line} / ${HEIGHT}`;
   ui.percent.textContent = `${Math.round(line / HEIGHT * 100)}%`;
 }
+function imageOptions() { return { rotation, zoom: Number(ui.zoom.value) / 100 }; }
+function refreshPreview() {
+  if (!image || busy || loading) return;
+  frame = renderImage(ui.canvas, image, document.querySelector('input[name="mode"]:checked').value, imageOptions());
+  updateButtons();
+}
 async function useFile(file) {
   if (!file || busy) return;
   loading = true; updateButtons(); showMessage('');
   try {
     const loaded = await loadImage(file);
-    const nextFrame = renderImage(ui.canvas, loaded, document.querySelector('input[name="mode"]:checked').value);
+    const nextFrame = renderImage(ui.canvas, loaded, document.querySelector('input[name="mode"]:checked').value, imageOptions());
     if (image?.close) image.close();
     image = loaded; frame = nextFrame;
     ui.fileName.textContent = file.name;
@@ -92,8 +102,29 @@ ui.disconnect.addEventListener('click', () => {
 ui.chooseFile.addEventListener('click', () => ui.file.click());
 ui.file.addEventListener('change', () => useFile(ui.file.files[0]));
 for (const radio of document.querySelectorAll('input[name="mode"]')) radio.addEventListener('change', () => {
-  if (!image || busy) return;
-  try { frame = renderImage(ui.canvas, image, radio.value); updateButtons(); }
+  if (!radio.checked) return;
+  try { refreshPreview(); }
+  catch (error) { report(error); }
+});
+ui.zoom.addEventListener('input', () => {
+  ui.zoomValue.value = `${ui.zoom.value}%`;
+  try { refreshPreview(); }
+  catch (error) { report(error); }
+});
+function rotateBy(degrees) {
+  rotation = (rotation + degrees + 360) % 360;
+  ui.rotationValue.value = `${rotation}°`;
+  try { refreshPreview(); }
+  catch (error) { report(error); }
+}
+ui.rotateLeft.addEventListener('click', () => rotateBy(-90));
+ui.rotateRight.addEventListener('click', () => rotateBy(90));
+ui.resetTransform.addEventListener('click', () => {
+  rotation = 0;
+  ui.zoom.value = '100';
+  ui.zoomValue.value = '100%';
+  ui.rotationValue.value = '0°';
+  try { refreshPreview(); }
   catch (error) { report(error); }
 });
 ui.drop.addEventListener('dragover', event => { event.preventDefault(); ui.drop.classList.add('dragging'); });

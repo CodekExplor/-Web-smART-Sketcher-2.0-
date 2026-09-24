@@ -1,6 +1,6 @@
 # Smart Sketcher Web
 
-Statyczna aplikacja do przygotowania obrazu i wysłania go przez Web Bluetooth do smART Sketcher 2.0. Kod działa w przeglądarce bez backendu. Użytkownik potwierdził połączenie z projektorem, ale poprawność transmisji obrazu nadal wymaga weryfikacji na fizycznym urządzeniu (`requires hardware verification`).
+Statyczna aplikacja do przygotowania obrazu i wysłania go przez Web Bluetooth do smART Sketcher 2.0. Kod działa w przeglądarce bez backendu. Użytkownik potwierdził działanie połączenia i wysyłania na swoim projektorze; inne egzemplarze i adaptery mogą wymagać sprawdzenia (`requires hardware verification`).
 
 ## Użycie
 
@@ -8,10 +8,10 @@ Statyczna aplikacja do przygotowania obrazu i wysłania go przez Web Bluetooth d
 2. Włącz smART Sketcher 2.0 i Bluetooth w komputerze.
 3. Kliknij **Połącz ze smART Sketcher** i wybierz urządzenie.
 4. Wybierz lub przeciągnij obraz PNG, JPG, WEBP albo BMP.
-5. Wybierz **Dopasuj** (cały obraz i białe marginesy) lub **Wypełnij** (środkowe przycięcie).
-6. Sprawdź końcowy podgląd i kliknij **Wyślij do projektora**.
+5. Wybierz **Dopasuj** (cały obraz i białe marginesy) lub **Wypełnij** (środkowe przycięcie). Ustaw skalę od 50% do 300% i obracaj obraz przyciskami o 90° w lewo lub w prawo.
+6. Sprawdź końcowy podgląd i kliknij **Wyślij do projektora**. Przycisk **Resetuj** przywraca skalę 100% i obrót 0°.
 
-Plik obrazu jest przetwarzany lokalnie w przeglądarce. Aplikacja nie przesyła go na serwer. PWA można zainstalować z menu Chrome/Edge; działa nadal w przeglądarkowym runtime i wymaga dostępnego Bluetooth.
+Plik obrazu jest przetwarzany lokalnie w przeglądarce. Aplikacja nie przesyła go na serwer. Skalowanie i obrót zmieniają dokładnie ten sam obraz 160 × 128 RGB565, który jest pokazywany w podglądzie i wysyłany do projektora. Skala działa względem wybranego trybu Dopasuj/Wypełnij; przy zmniejszeniu mogą pojawić się białe marginesy. PWA można zainstalować z menu Chrome/Edge; działa nadal w przeglądarkowym runtime i wymaga dostępnego Bluetooth.
 
 ## Analiza projektu źródłowego
 
@@ -53,7 +53,7 @@ Jeśli przeglądarka odrzuca zapis 320 B, w **Ustawieniach połączenia i transm
 
 ### Gdy obraz ma poziome przerwy
 
-1. Otwórz [adres z numerem wersji](https://codekexplor.github.io/-Web-smART-Sketcher-2.0-/?v=20260924-3). Na dole strony musi być napis **Wersja 2026.09.24.3**. Zamknij wcześniej otwartą kartę lub zainstalowaną PWA. Zasoby JS/CSS mają numer wersji w adresie, a service worker pobiera aktualną wersję z sieci.
+1. Otwórz [adres z numerem wersji](https://codekexplor.github.io/-Web-smART-Sketcher-2.0-/?v=20260924-4). Na dole strony musi być napis **Wersja 2026.09.24.4**. Zamknij wcześniej otwartą kartę lub zainstalowaną PWA. Zasoby JS/CSS mają numer wersji w adresie, a service worker pobiera aktualną wersję z sieci.
 2. Użyj domyślnej opcji **Cała linia · 320 B**.
 3. Wyślij prosty obraz testowy i porównaj go z podglądem. Postęp oznacza zakończone zapisy GATT, a nie potwierdzenie wyglądu obrazu.
 4. Jeśli wystąpi błąd zapisu 320 B, przetestuj 80 B, a dopiero potem 20 B. Zapisz rozmiar zapisu, przeglądarkę, system, linię/procent błędu i ostatnią odpowiedź BLE. Te dane pomogą dobrać poprawny sposób transmisji dla Twojego egzemplarza.

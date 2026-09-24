@@ -1,11 +1,24 @@
-import { WIDTH, HEIGHT } from './config.js?v=20260924-3';
+import { WIDTH, HEIGHT } from './config.js?v=20260924-4';
 
 export function placement(sourceWidth, sourceHeight, mode, targetWidth = WIDTH, targetHeight = HEIGHT) {
-  if (sourceWidth <= 0 || sourceHeight <= 0 || targetWidth <= 0 || targetHeight <= 0 || !['fit', 'fill'].includes(mode)) throw new RangeError('Nieprawidłowy rozmiar obrazu lub tryb.');
+  if (![sourceWidth, sourceHeight, targetWidth, targetHeight].every(value => Number.isFinite(value) && value > 0) || !['fit', 'fill'].includes(mode)) throw new RangeError('Nieprawidłowy rozmiar obrazu lub tryb.');
   const scale = mode === 'fit' ? Math.min(targetWidth / sourceWidth, targetHeight / sourceHeight) : Math.max(targetWidth / sourceWidth, targetHeight / sourceHeight);
   const width = sourceWidth * scale;
   const height = sourceHeight * scale;
   return { x: (targetWidth - width) / 2, y: (targetHeight - height) / 2, width, height };
+}
+
+export function transformedPlacement(sourceWidth, sourceHeight, mode, rotation = 0, zoom = 1, targetWidth = WIDTH, targetHeight = HEIGHT) {
+  if (!Number.isInteger(rotation) || rotation % 90 !== 0 || !Number.isFinite(zoom) || zoom <= 0) throw new RangeError('Nieprawidłowy obrót lub skala.');
+  const quarterTurn = Math.abs(rotation / 90) % 2 === 1;
+  const box = placement(quarterTurn ? sourceHeight : sourceWidth, quarterTurn ? sourceWidth : sourceHeight, mode, targetWidth, targetHeight);
+  return {
+    centerX: targetWidth / 2,
+    centerY: targetHeight / 2,
+    drawWidth: (quarterTurn ? box.height : box.width) * zoom,
+    drawHeight: (quarterTurn ? box.width : box.height) * zoom,
+    radians: rotation * Math.PI / 180
+  };
 }
 
 export function rgbTo565(r, g, b) { return ((r & 0xf8) << 8) | ((g & 0xfc) << 3) | (b >> 3); }
@@ -46,15 +59,19 @@ export async function loadImage(file) {
   } finally { URL.revokeObjectURL(url); }
 }
 
-export function renderImage(canvas, image, mode) {
+export function renderImage(canvas, image, mode, { rotation = 0, zoom = 1 } = {}) {
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   if (!ctx) throw new Error('Nie można przygotować obrazu w tej przeglądarce.');
   canvas.width = WIDTH;
   canvas.height = HEIGHT;
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
-  const box = placement(image.width, image.height, mode);
-  ctx.drawImage(image, box.x, box.y, box.width, box.height);
+  const layout = transformedPlacement(image.width, image.height, mode, rotation, zoom);
+  ctx.save();
+  ctx.translate(layout.centerX, layout.centerY);
+  ctx.rotate(layout.radians);
+  ctx.drawImage(image, -layout.drawWidth / 2, -layout.drawHeight / 2, layout.drawWidth, layout.drawHeight);
+  ctx.restore();
   const pixels = quantizePreview(ctx.getImageData(0, 0, WIDTH, HEIGHT));
   ctx.putImageData(pixels, 0, 0);
   return encodeRgb565(pixels);
