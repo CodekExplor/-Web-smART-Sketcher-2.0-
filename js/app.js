@@ -1,14 +1,14 @@
-import { DEFAULT_SERVICE_UUID, HEIGHT } from './config.js?v=20260924-4';
-import { SketcherBluetooth, BluetoothFailure } from './bluetooth.js?v=20260924-4';
-import { loadImage, renderImage } from './imageProcessor.js?v=20260924-4';
-import { sendImage } from './protocol.js?v=20260924-4';
+import { DEFAULT_SERVICE_UUID, HEIGHT } from './config.js?v=20260924-5';
+import { SketcherBluetooth, BluetoothFailure } from './bluetooth.js?v=20260924-5';
+import { loadImage, renderImage } from './imageProcessor.js?v=20260924-5';
+import { sendImage } from './protocol.js?v=20260924-5';
 
 const $ = id => document.getElementById(id);
 const ui = {
   support: $('support-message'), connect: $('connect-button'), disconnect: $('disconnect-button'),
   service: $('service-uuid'), device: $('device-name'), status: $('status-text'), pill: $('status-pill'), notification: $('last-notification'),
   file: $('file-input'), chooseFile: $('choose-file-button'), drop: $('drop-zone'), fileName: $('file-name'), canvas: $('preview'),
-  zoom: $('zoom'), zoomValue: $('zoom-value'), rotationValue: $('rotation-value'), rotateLeft: $('rotate-left'), rotateRight: $('rotate-right'), resetTransform: $('reset-transform'),
+  zoom: $('zoom'), zoomValue: $('zoom-value'), preserveLines: $('preserve-lines'), rotationValue: $('rotation-value'), rotateLeft: $('rotate-left'), rotateRight: $('rotate-right'), resetTransform: $('reset-transform'),
   send: $('send-button'), progressArea: $('progress-area'), progress: $('progress-bar'),
   progressText: $('progress-text'), percent: $('progress-percent'), message: $('message')
 };
@@ -37,7 +37,7 @@ function updateButtons() {
   ui.disconnect.disabled = busy || connecting || !bluetooth.connected;
   ui.send.disabled = busy || loading || !frame || !bluetooth.connected;
   ui.service.disabled = busy || connecting;
-  for (const control of [ui.zoom, ui.rotateLeft, ui.rotateRight, ui.resetTransform]) control.disabled = busy || loading || !image;
+  for (const control of [ui.zoom, ui.preserveLines, ui.rotateLeft, ui.rotateRight, ui.resetTransform]) control.disabled = busy || loading || !image;
   for (const radio of document.querySelectorAll('input[name="mode"]')) radio.disabled = busy || loading;
 }
 function showMessage(text, isError = false) { ui.message.textContent = text; ui.message.classList.toggle('error', isError); }
@@ -65,7 +65,7 @@ function updateProgress(line) {
   ui.progressText.textContent = `Wysyłanie: ${line} / ${HEIGHT}`;
   ui.percent.textContent = `${Math.round(line / HEIGHT * 100)}%`;
 }
-function imageOptions() { return { rotation, zoom: Number(ui.zoom.value) / 100 }; }
+function imageOptions() { return { rotation, zoom: Number(ui.zoom.value) / 100, preserveLines: ui.preserveLines.checked }; }
 function refreshPreview() {
   if (!image || busy || loading) return;
   frame = renderImage(ui.canvas, image, document.querySelector('input[name="mode"]:checked').value, imageOptions());
@@ -108,6 +108,10 @@ for (const radio of document.querySelectorAll('input[name="mode"]')) radio.addEv
 });
 ui.zoom.addEventListener('input', () => {
   ui.zoomValue.value = `${ui.zoom.value}%`;
+  try { refreshPreview(); }
+  catch (error) { report(error); }
+});
+ui.preserveLines.addEventListener('change', () => {
   try { refreshPreview(); }
   catch (error) { report(error); }
 });

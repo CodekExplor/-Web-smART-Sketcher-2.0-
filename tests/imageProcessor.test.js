@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { placement, transformedPlacement, rgbTo565, encodeRgb565, quantizePreview, renderImage } from '../js/imageProcessor.js';
+import { placement, transformedPlacement, rgbTo565, encodeRgb565, quantizePreview, downsamplePreservingLines, renderImage } from '../js/imageProcessor.js';
 
 test('fit keeps a wide image inside 160 × 128 with centered white margins', () => {
   assert.deepEqual(placement(320, 160, 'fit'), { x: 0, y: 24, width: 160, height: 80 });
@@ -79,4 +79,43 @@ test('canvas applies zoom and a clockwise quarter turn before reading final pixe
   const frame = renderImage(canvas, { width: 320, height: 160 }, 'fit', { rotation: 90, zoom: 2 });
   assert.deepEqual(calls, [['translate', 80, 64], ['rotate', Math.PI / 2], ['draw', -128, -64, 256, 128]]);
   assert.equal(frame.length, 160 * 128 * 2);
+});
+test('downsampling keeps a one-subpixel black line visible on white', () => {
+  const source = { data: new Uint8ClampedArray(4 * 4 * 4).fill(255), width: 4, height: 4 };
+  source.data.set([0, 0, 0, 255], (2 * 4 + 2) * 4);
+  const target = { data: new Uint8ClampedArray(4), width: 1, height: 1 };
+  downsamplePreservingLines(source, target);
+  assert.ok(target.data[0] < 100); // ordinary averaging would produce 239
+  assert.deepEqual([...target.data.slice(0, 3)], [target.data[0], target.data[0], target.data[0]]);
+  assert.equal(target.data[3], 255);
+});
+test('downsampling leaves uniform white and gray regions unchanged', () => {
+  for (const level of [255, 128]) {
+    const data = new Uint8ClampedArray(4 * 4 * 4);
+    for (let i = 0; i < data.length; i += 4) data.set([level, level, level, 255], i);
+    const target = { data: new Uint8ClampedArray(4), width: 1, height: 1 };
+    downsamplePreservingLines({ data, width: 4, height: 4 }, target);
+    assert.deepEqual([...target.data], [level, level, level, 255]);
+  }
+});
+test('image render uses line-preserving downsampling below 100% zoom', () => {
+  const sampleData = new Uint8ClampedArray(640 * 512 * 4).fill(255);
+  sampleData.set([0, 0, 0, 255], (2 * 640 + 2) * 4);
+  const sampleContext = {
+    fillRect() {}, save() {}, translate() {}, rotate() {}, drawImage() {}, restore() {},
+    getImageData() { return { data: sampleData, width: 640, height: 512 }; }
+  };
+  const targetContext = {
+    createImageData() { return { data: new Uint8ClampedArray(160 * 128 * 4), width: 160, height: 128 }; },
+    putImageData(imageData) { this.lastImageData = imageData; }
+  };
+  const canvas = {
+    getContext() { return targetContext; },
+    ownerDocument: { createElement() { return { getContext() { return sampleContext; } }; } }
+  };
+  const frame = renderImage(canvas, { width: 1254, height: 1254 }, 'fit', { zoom: .5 });
+  assert.equal(frame.length, 160 * 128 * 2);
+  assert.ok(frame[0] < 100);
+  assert.equal(frame[2], 255);
+  assert.ok(targetContext.lastImageData);
 });

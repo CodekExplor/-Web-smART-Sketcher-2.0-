@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#102b39">
   <meta name="description" content="Wyślij własny obraz do smART Sketcher 2.0 prosto z przeglądarki.">
-  <link rel="manifest" href="./manifest.webmanifest?v=20260924-4">
+  <link rel="manifest" href="./manifest.webmanifest?v=20260924-5">
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./css/styles.css?v=20260924-4">
+  <link rel="stylesheet" href="./css/styles.css?v=20260924-5">
   <title>Smart Sketcher Web</title>
 </head>
 <body>
@@ -38,6 +38,7 @@
       <div class="adjustments" aria-label="Skala i obrót obrazu">
         <div class="adjustment-heading"><label for="zoom">Skala obrazu</label><output id="zoom-value" for="zoom">100%</output></div>
         <input id="zoom" type="range" min="50" max="300" step="5" value="100" disabled>
+        <label class="preserve-lines"><input id="preserve-lines" type="checkbox" checked disabled><span>Zachowaj cienkie linie <small>przy skali poniżej 100%; wyłącz dla zdjęć</small></span></label>
         <div class="rotation-row"><span>Obrót</span><div class="rotation-buttons"><button id="rotate-left" class="button secondary" type="button" aria-label="Obróć obraz o 90 stopni w lewo" disabled>↶ 90° w lewo</button><button id="rotate-right" class="button secondary" type="button" aria-label="Obróć obraz o 90 stopni w prawo" disabled>↷ 90° w prawo</button><button id="reset-transform" class="button secondary" type="button" disabled>Resetuj</button></div><output id="rotation-value" aria-live="polite">0°</output></div>
         <p>Skala działa po dopasowaniu do kadru. Zmniejszenie może dodać białe marginesy.</p>
       </div>
@@ -47,8 +48,8 @@
       <div id="progress-area" class="progress-area" hidden><div class="progress-label"><span id="progress-text">Wysyłanie: 0 / 128</span><strong id="progress-percent">0%</strong></div><progress id="progress-bar" max="128" value="0">0%</progress></div>
       <p id="message" class="message" aria-live="polite"></p>
     </section>
-    <footer>Wymagana przeglądarka Chrome lub Edge, HTTPS i Bluetooth Low Energy. Protokół wymaga potwierdzenia na fizycznym urządzeniu.<br><span id="app-version">Wersja 2026.09.24.4</span></footer>
+    <footer>Wymagana przeglądarka Chrome lub Edge, HTTPS i Bluetooth Low Energy. Protokół wymaga potwierdzenia na fizycznym urządzeniu.<br><span id="app-version">Wersja 2026.09.24.5</span></footer>
   </main>
-  <script type="module" src="./js/app.js?v=20260924-4"></script>
+  <script type="module" src="./js/app.js?v=20260924-5"></script>
 </body>
 </html>

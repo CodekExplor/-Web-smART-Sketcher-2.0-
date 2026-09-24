@@ -1,4 +1,4 @@
-import { DEVICE_NAME, CHARACTERISTIC_UUID, debug } from './config.js?v=20260924-4';
+import { DEVICE_NAME, CHARACTERISTIC_UUID, debug } from './config.js?v=20260924-5';
 
 export class BluetoothFailure extends Error {
   constructor(code, cause) { super(code, { cause }); this.name = 'BluetoothFailure'; this.code = code; }
