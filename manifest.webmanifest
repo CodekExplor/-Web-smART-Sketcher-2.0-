@@ -3,7 +3,7 @@
   "short_name": "Sketcher Web",
   "description": "Wyślij obraz do smART Sketcher 2.0 przez Bluetooth.",
   "id": "./",
-  "start_url": "./?v=20260924-5",
+  "start_url": "./?v=20260924-6",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f4f7f6",

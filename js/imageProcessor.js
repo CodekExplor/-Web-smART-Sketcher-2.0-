@@ -1,4 +1,4 @@
-import { WIDTH, HEIGHT } from './config.js?v=20260924-5';
+import { WIDTH, HEIGHT } from './config.js?v=20260924-6';
 
 export function placement(sourceWidth, sourceHeight, mode, targetWidth = WIDTH, targetHeight = HEIGHT) {
   if (![sourceWidth, sourceHeight, targetWidth, targetHeight].every(value => Number.isFinite(value) && value > 0) || !['fit', 'fill'].includes(mode)) throw new RangeError('Nieprawidłowy rozmiar obrazu lub tryb.');
@@ -8,13 +8,13 @@ export function placement(sourceWidth, sourceHeight, mode, targetWidth = WIDTH, 
   return { x: (targetWidth - width) / 2, y: (targetHeight - height) / 2, width, height };
 }
 
-export function transformedPlacement(sourceWidth, sourceHeight, mode, rotation = 0, zoom = 1, targetWidth = WIDTH, targetHeight = HEIGHT) {
-  if (!Number.isInteger(rotation) || rotation % 90 !== 0 || !Number.isFinite(zoom) || zoom <= 0) throw new RangeError('Nieprawidłowy obrót lub skala.');
+export function transformedPlacement(sourceWidth, sourceHeight, mode, rotation = 0, zoom = 1, targetWidth = WIDTH, targetHeight = HEIGHT, panX = 0, panY = 0) {
+  if (!Number.isInteger(rotation) || rotation % 90 !== 0 || !Number.isFinite(zoom) || zoom <= 0 || !Number.isFinite(panX) || !Number.isFinite(panY)) throw new RangeError('Nieprawidłowy obrót, skala lub przesunięcie.');
   const quarterTurn = Math.abs(rotation / 90) % 2 === 1;
   const box = placement(quarterTurn ? sourceHeight : sourceWidth, quarterTurn ? sourceWidth : sourceHeight, mode, targetWidth, targetHeight);
   return {
-    centerX: targetWidth / 2,
-    centerY: targetHeight / 2,
+    centerX: targetWidth / 2 + panX * targetWidth / WIDTH,
+    centerY: targetHeight / 2 + panY * targetHeight / HEIGHT,
     drawWidth: (quarterTurn ? box.height : box.width) * zoom,
     drawHeight: (quarterTurn ? box.width : box.height) * zoom,
     radians: rotation * Math.PI / 180
@@ -82,6 +82,59 @@ export function downsamplePreservingLines(source, target, factor = 4) {
   return target;
 }
 
+function neighborhoodPass(data, width, height, darken) {
+  const result = new Uint8ClampedArray(data.length);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const dest = (y * width + x) * 4;
+      let best = dest;
+      let bestLuminance = darken ? Infinity : -Infinity;
+      for (let sy = Math.max(0, y - 1); sy <= Math.min(height - 1, y + 1); sy++) {
+        for (let sx = Math.max(0, x - 1); sx <= Math.min(width - 1, x + 1); sx++) {
+          const index = (sy * width + sx) * 4;
+          const luminance = .2126 * data[index] + .7152 * data[index + 1] + .0722 * data[index + 2];
+          if (darken ? luminance < bestLuminance : luminance > bestLuminance) {
+            bestLuminance = luminance;
+            best = index;
+          }
+        }
+      }
+      result.set(data.subarray(best, best + 3), dest);
+      result[dest + 3] = 255;
+    }
+  }
+  return result;
+}
+
+export function adjustLineThickness(imageData, amount = 0) {
+  if (!Number.isFinite(amount) || amount < -100 || amount > 200) throw new RangeError('Nieprawidłowa grubość linii.');
+  if (amount === 0) return imageData;
+  const { data, width, height } = imageData;
+  let current = new Uint8ClampedArray(data);
+  let remaining = Math.abs(amount) / 100;
+  while (remaining > 0) {
+    const next = neighborhoodPass(current, width, height, amount > 0);
+    const blend = Math.min(1, remaining);
+    for (let i = 0; i < current.length; i += 4) {
+      for (let channel = 0; channel < 3; channel++) current[i + channel] = Math.round(current[i + channel] * (1 - blend) + next[i + channel] * blend);
+      current[i + 3] = 255;
+    }
+    remaining -= blend;
+  }
+  data.set(current);
+  return imageData;
+}
+
+export function adjustTone(imageData, { contrast = 100, brightness = 0 } = {}) {
+  if (!Number.isFinite(contrast) || contrast < 50 || contrast > 200 || !Number.isFinite(brightness) || brightness < -80 || brightness > 80) throw new RangeError('Nieprawidłowy kontrast lub jasność.');
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    for (let channel = 0; channel < 3; channel++) data[i + channel] = Math.round((data[i + channel] - 128) * contrast / 100 + 128 + brightness);
+    data[i + 3] = 255;
+  }
+  return imageData;
+}
+
 export async function loadImage(file) {
   if (!file || (!/^image\/(png|jpeg|webp|bmp)$/i.test(file.type) && !/\.(png|jpe?g|webp|bmp)$/i.test(file.name))) throw new Error('Wybierz plik PNG, JPG, WEBP lub BMP.');
   if (typeof createImageBitmap === 'function') return createImageBitmap(file);
@@ -94,12 +147,12 @@ export async function loadImage(file) {
   } finally { URL.revokeObjectURL(url); }
 }
 
-function drawToContext(ctx, image, mode, rotation, zoom, width, height) {
+function drawToContext(ctx, image, mode, rotation, zoom, panX, panY, width, height) {
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, width, height);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
-  const layout = transformedPlacement(image.width, image.height, mode, rotation, zoom, width, height);
+  const layout = transformedPlacement(image.width, image.height, mode, rotation, zoom, width, height, panX, panY);
   ctx.save();
   ctx.translate(layout.centerX, layout.centerY);
   ctx.rotate(layout.radians);
@@ -107,7 +160,7 @@ function drawToContext(ctx, image, mode, rotation, zoom, width, height) {
   ctx.restore();
 }
 
-export function renderImage(canvas, image, mode, { rotation = 0, zoom = 1, preserveLines = true } = {}) {
+export function renderImage(canvas, image, mode, { rotation = 0, zoom = 1, panX = 0, panY = 0, preserveLines = true, lineThickness = 0, contrast = 100, brightness = 0 } = {}) {
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   if (!ctx) throw new Error('Nie można przygotować obrazu w tej przeglądarce.');
   canvas.width = WIDTH;
@@ -120,12 +173,14 @@ export function renderImage(canvas, image, mode, { rotation = 0, zoom = 1, prese
     sampleCanvas.height = HEIGHT * factor;
     const sampleCtx = sampleCanvas.getContext('2d', { willReadFrequently: true });
     if (!sampleCtx) throw new Error('Nie można przygotować obrazu w tej przeglądarce.');
-    drawToContext(sampleCtx, image, mode, rotation, zoom, sampleCanvas.width, sampleCanvas.height);
+    drawToContext(sampleCtx, image, mode, rotation, zoom, panX, panY, sampleCanvas.width, sampleCanvas.height);
     pixels = downsamplePreservingLines(sampleCtx.getImageData(0, 0, sampleCanvas.width, sampleCanvas.height), ctx.createImageData(WIDTH, HEIGHT), factor);
   } else {
-    drawToContext(ctx, image, mode, rotation, zoom, WIDTH, HEIGHT);
+    drawToContext(ctx, image, mode, rotation, zoom, panX, panY, WIDTH, HEIGHT);
     pixels = ctx.getImageData(0, 0, WIDTH, HEIGHT);
   }
+  adjustLineThickness(pixels, lineThickness);
+  adjustTone(pixels, { contrast, brightness });
   quantizePreview(pixels);
   ctx.putImageData(pixels, 0, 0);
   return encodeRgb565(pixels);

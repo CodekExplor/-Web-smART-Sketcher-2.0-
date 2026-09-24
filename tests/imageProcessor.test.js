@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { placement, transformedPlacement, rgbTo565, encodeRgb565, quantizePreview, downsamplePreservingLines, renderImage } from '../js/imageProcessor.js';
+import { placement, transformedPlacement, rgbTo565, encodeRgb565, quantizePreview, downsamplePreservingLines, adjustLineThickness, adjustTone, renderImage } from '../js/imageProcessor.js';
 
 test('fit keeps a wide image inside 160 × 128 with centered white margins', () => {
   assert.deepEqual(placement(320, 160, 'fit'), { x: 0, y: 24, width: 160, height: 80 });
@@ -24,6 +24,40 @@ test('90-degree turns swap effective dimensions before fitting and zoom around t
   assert.deepEqual(transformedPlacement(320, 160, 'fill', 180, .5), { centerX: 80, centerY: 64, drawWidth: 128, drawHeight: 64, radians: Math.PI });
   assert.throws(() => transformedPlacement(320, 160, 'fit', 45, 1));
   assert.throws(() => transformedPlacement(320, 160, 'fit', 90, 0));
+});
+
+test('panning moves the crop in final pixels at either render resolution', () => {
+  const final = transformedPlacement(320, 160, 'fill', 90, 1.5, 160, 128, 12, -7);
+  const supersampled = transformedPlacement(320, 160, 'fill', 90, 1.5, 640, 512, 12, -7);
+  assert.equal(final.centerX, 92);
+  assert.equal(final.centerY, 57);
+  assert.equal(supersampled.centerX, 368);
+  assert.equal(supersampled.centerY, 228);
+  assert.equal(supersampled.drawWidth, final.drawWidth * 4);
+  assert.throws(() => transformedPlacement(320, 160, 'fit', 0, 1, 160, 128, Infinity, 0));
+});
+
+test('line thickness grows or thins a black stroke while keeping white background', () => {
+  const makeLine = () => {
+    const data = new Uint8ClampedArray(5 * 5 * 4).fill(255);
+    for (let y = 0; y < 5; y++) data.set([0, 0, 0, 255], (y * 5 + 2) * 4);
+    return { data, width: 5, height: 5 };
+  };
+  const thick = adjustLineThickness(makeLine(), 100);
+  assert.equal(thick.data[(2 * 5 + 1) * 4], 0);
+  assert.equal(thick.data[(2 * 5 + 0) * 4], 255);
+  const soft = adjustLineThickness(makeLine(), 50);
+  assert.equal(soft.data[(2 * 5 + 1) * 4], 128);
+  const thin = adjustLineThickness(makeLine(), -100);
+  assert.equal(thin.data[(2 * 5 + 2) * 4], 255);
+  assert.throws(() => adjustLineThickness(makeLine(), 201));
+});
+
+test('contrast and brightness change tones before RGB565 encoding', () => {
+  const pixels = { data: new Uint8ClampedArray([100, 128, 255, 255]), width: 1, height: 1 };
+  adjustTone(pixels, { contrast: 200, brightness: 10 });
+  assert.deepEqual([...pixels.data], [82, 138, 255, 255]);
+  assert.throws(() => adjustTone(pixels, { brightness: 81 }));
 });
 test('RGB565 uses red 5, green 6, blue 5 bits and sends high byte first', () => {
   const colors = [
@@ -79,6 +113,24 @@ test('canvas applies zoom and a clockwise quarter turn before reading final pixe
   const frame = renderImage(canvas, { width: 320, height: 160 }, 'fit', { rotation: 90, zoom: 2 });
   assert.deepEqual(calls, [['translate', 80, 64], ['rotate', Math.PI / 2], ['draw', -128, -64, 256, 128]]);
   assert.equal(frame.length, 160 * 128 * 2);
+});
+
+test('rendered preview and transmitted bytes share pan and tone adjustments', () => {
+  let translated;
+  let preview;
+  const pixels = new Uint8ClampedArray(160 * 128 * 4).fill(255);
+  pixels.set([100, 100, 100, 255], 0);
+  const context = {
+    fillRect() {}, save() {}, restore() {}, rotate() {}, drawImage() {},
+    translate(x, y) { translated = [x, y]; },
+    getImageData() { return { data: pixels, width: 160, height: 128 }; },
+    putImageData(value) { preview = value; }
+  };
+  const frame = renderImage({ getContext() { return context; } }, { width: 160, height: 128 }, 'fill', { panX: 12, panY: -7, contrast: 200, brightness: 10 });
+  assert.deepEqual(translated, [92, 57]);
+  assert.equal(preview.data[0], 82 & 0xf8 | ((82 & 0xf8) >> 5));
+  assert.deepEqual([...frame.slice(0, 2)], [0x52, 0x8a]);
+  assert.deepEqual([...frame.slice(0, 2)], [...encodeRgb565(preview).slice(0, 2)]);
 });
 test('downsampling keeps a one-subpixel black line visible on white', () => {
   const source = { data: new Uint8ClampedArray(4 * 4 * 4).fill(255), width: 4, height: 4 };

@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#102b39">
   <meta name="description" content="Wyślij własny obraz do smART Sketcher 2.0 prosto z przeglądarki.">
-  <link rel="manifest" href="./manifest.webmanifest?v=20260924-5">
+  <link rel="manifest" href="./manifest.webmanifest?v=20260924-6">
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./css/styles.css?v=20260924-5">
+  <link rel="stylesheet" href="./css/styles.css?v=20260924-6">
   <title>Smart Sketcher Web</title>
 </head>
 <body>
@@ -35,21 +35,38 @@
       <div id="drop-zone" class="drop-zone"><div class="drop-icon" aria-hidden="true">↥</div><strong>Przeciągnij obraz tutaj</strong><span>lub</span><button id="choose-file-button" class="button secondary file-button" type="button">Wybierz obraz</button><input id="file-input" type="file" accept="image/png,image/jpeg,image/webp,image/bmp,.bmp" hidden aria-label="Wybierz plik obrazu"><small>PNG, JPG, WEBP lub BMP · plik pozostaje w Twojej przeglądarce</small></div>
       <p id="file-name" class="file-name" aria-live="polite">Nie wybrano obrazu</p>
       <fieldset class="mode-choice"><legend>Tryb dopasowania</legend><label><input type="radio" name="mode" value="fit" checked><span>Dopasuj <small>cały obraz, białe marginesy</small></span></label><label><input type="radio" name="mode" value="fill"><span>Wypełnij <small>pełny kadr, możliwe przycięcie</small></span></label></fieldset>
-      <div class="adjustments" aria-label="Skala i obrót obrazu">
+      <div class="adjustments" aria-label="Kadrowanie i wygląd obrazu">
         <div class="adjustment-heading"><label for="zoom">Skala obrazu</label><output id="zoom-value" for="zoom">100%</output></div>
         <input id="zoom" type="range" min="50" max="300" step="5" value="100" disabled>
         <label class="preserve-lines"><input id="preserve-lines" type="checkbox" checked disabled><span>Zachowaj cienkie linie <small>przy skali poniżej 100%; wyłącz dla zdjęć</small></span></label>
-        <div class="rotation-row"><span>Obrót</span><div class="rotation-buttons"><button id="rotate-left" class="button secondary" type="button" aria-label="Obróć obraz o 90 stopni w lewo" disabled>↶ 90° w lewo</button><button id="rotate-right" class="button secondary" type="button" aria-label="Obróć obraz o 90 stopni w prawo" disabled>↷ 90° w prawo</button><button id="reset-transform" class="button secondary" type="button" disabled>Resetuj</button></div><output id="rotation-value" aria-live="polite">0°</output></div>
-        <p>Skala działa po dopasowaniu do kadru. Zmniejszenie może dodać białe marginesy.</p>
+        <div class="rotation-row"><span>Obrót</span><div class="rotation-buttons"><button id="rotate-left" class="button secondary" type="button" aria-label="Obróć obraz o 90 stopni w lewo" disabled>↶ 90° w lewo</button><button id="rotate-right" class="button secondary" type="button" aria-label="Obróć obraz o 90 stopni w prawo" disabled>↷ 90° w prawo</button><button id="reset-transform" class="button secondary" type="button" disabled>Resetuj ustawienia</button></div><output id="rotation-value" aria-live="polite">0°</output></div>
+        <div class="adjustment-group">
+          <h3>Kadrowanie</h3>
+          <p>Powiększ obraz suwakiem skali, a potem przeciągnij podgląd, aby wybrać fragment. Możesz też ustawić położenie suwakami lub strzałkami na klawiaturze.</p>
+          <div class="adjustment-heading"><label for="pan-x">Przesunięcie w poziomie</label><output id="pan-x-value" for="pan-x">0 px</output></div>
+          <input id="pan-x" type="range" min="-80" max="80" step="1" value="0" disabled>
+          <div class="adjustment-heading"><label for="pan-y">Przesunięcie w pionie</label><output id="pan-y-value" for="pan-y">0 px</output></div>
+          <input id="pan-y" type="range" min="-64" max="64" step="1" value="0" disabled>
+        </div>
+        <div class="adjustment-group">
+          <h3>Wygląd projekcji</h3>
+          <div class="adjustment-heading"><label for="line-thickness">Grubość linii</label><output id="line-thickness-value" for="line-thickness">0%</output></div>
+          <input id="line-thickness" type="range" min="-100" max="200" step="10" value="0" disabled>
+          <div class="adjustment-heading"><label for="contrast">Kontrast</label><output id="contrast-value" for="contrast">100%</output></div>
+          <input id="contrast" type="range" min="50" max="200" step="5" value="100" disabled>
+          <div class="adjustment-heading"><label for="brightness">Jasność</label><output id="brightness-value" for="brightness">0</output></div>
+          <input id="brightness" type="range" min="-80" max="80" step="5" value="0" disabled>
+          <p>Grubość linii najlepiej sprawdza się przy czarnych rysunkach na białym tle. Podgląd pokazuje piksele wysyłane do projektora.</p>
+        </div>
       </div>
       <div class="preview-head"><h3>Podgląd końcowy</h3><span>160 × 128 px · RGB565</span></div>
-      <div class="preview-wrap"><canvas id="preview" width="160" height="128" role="img" aria-label="Podgląd obrazu przygotowanego do wysłania"></canvas></div>
+      <div class="preview-wrap"><canvas id="preview" width="160" height="128" tabindex="0" role="img" aria-label="Podgląd obrazu przygotowanego do wysłania. Przeciągnij, aby przesunąć kadr, lub użyj strzałek na klawiaturze."></canvas></div>
       <button id="send-button" class="button primary send-button" type="button" disabled>Wyślij do projektora <span aria-hidden="true">→</span></button>
       <div id="progress-area" class="progress-area" hidden><div class="progress-label"><span id="progress-text">Wysyłanie: 0 / 128</span><strong id="progress-percent">0%</strong></div><progress id="progress-bar" max="128" value="0">0%</progress></div>
       <p id="message" class="message" aria-live="polite"></p>
     </section>
-    <footer>Wymagana przeglądarka Chrome lub Edge, HTTPS i Bluetooth Low Energy. Protokół wymaga potwierdzenia na fizycznym urządzeniu.<br><span id="app-version">Wersja 2026.09.24.5</span></footer>
+    <footer>Wymagana przeglądarka Chrome lub Edge, HTTPS i Bluetooth Low Energy. Protokół wymaga potwierdzenia na fizycznym urządzeniu.<br><span id="app-version">Wersja 2026.09.24.6</span></footer>
   </main>
-  <script type="module" src="./js/app.js?v=20260924-5"></script>
+  <script type="module" src="./js/app.js?v=20260924-6"></script>
 </body>
 </html>

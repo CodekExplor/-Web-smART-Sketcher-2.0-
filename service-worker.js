@@ -1,10 +1,10 @@
-const CACHE = 'smart-sketcher-web-v5';
+const CACHE = 'smart-sketcher-web-v6';
 const PREFIX = 'smart-sketcher-web-';
 const ASSETS = [
-  './', './index.html', './css/styles.css?v=20260924-5',
-  './js/app.js?v=20260924-5', './js/bluetooth.js?v=20260924-5',
-  './js/config.js?v=20260924-5', './js/imageProcessor.js?v=20260924-5',
-  './js/protocol.js?v=20260924-5', './manifest.webmanifest?v=20260924-5',
+  './', './index.html', './css/styles.css?v=20260924-6',
+  './js/app.js?v=20260924-6', './js/bluetooth.js?v=20260924-6',
+  './js/config.js?v=20260924-6', './js/imageProcessor.js?v=20260924-6',
+  './js/protocol.js?v=20260924-6', './manifest.webmanifest?v=20260924-6',
   './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png'
 ];
 
