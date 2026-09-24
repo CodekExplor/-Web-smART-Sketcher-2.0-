@@ -1,4 +1,4 @@
-import { WIDTH, HEIGHT, CHUNK_BYTES, LINE_GAP_MS, CHUNK_GAP_MS, ACK_TIMEOUT_MS, debug } from './config.js?v=20260924-6';
+import { WIDTH, HEIGHT, CHUNK_BYTES, LINE_GAP_MS, CHUNK_GAP_MS, ACK_TIMEOUT_MS, debug } from './config.js?v=20260924-7';
 
 export function sendImageCommand() { return Uint8Array.from([0x01, 0x00, 0x00, 0x00, 0x50, 0x00, 0x01, 0x00]); }
 export function chunkBytes(bytes, size = CHUNK_BYTES) {

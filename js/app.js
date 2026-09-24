@@ -1,13 +1,14 @@
-import { DEFAULT_SERVICE_UUID, HEIGHT } from './config.js?v=20260924-6';
-import { SketcherBluetooth, BluetoothFailure } from './bluetooth.js?v=20260924-6';
-import { loadImage, renderImage } from './imageProcessor.js?v=20260924-6';
-import { sendImage } from './protocol.js?v=20260924-6';
+import { DEFAULT_SERVICE_UUID, HEIGHT } from './config.js?v=20260924-7';
+import { SketcherBluetooth, BluetoothFailure } from './bluetooth.js?v=20260924-7';
+import { loadImage, loadImageFromUrl, renderImage } from './imageProcessor.js?v=20260924-7';
+import { sendImage } from './protocol.js?v=20260924-7';
 
 const $ = id => document.getElementById(id);
 const ui = {
   support: $('support-message'), connect: $('connect-button'), disconnect: $('disconnect-button'),
   service: $('service-uuid'), device: $('device-name'), status: $('status-text'), pill: $('status-pill'), notification: $('last-notification'),
   file: $('file-input'), chooseFile: $('choose-file-button'), drop: $('drop-zone'), fileName: $('file-name'), canvas: $('preview'),
+  imageUrlForm: $('image-url-form'), imageUrl: $('image-url'), loadUrl: $('load-url-button'),
   zoom: $('zoom'), zoomValue: $('zoom-value'), preserveLines: $('preserve-lines'), rotationValue: $('rotation-value'), rotateLeft: $('rotate-left'), rotateRight: $('rotate-right'), resetTransform: $('reset-transform'),
   panX: $('pan-x'), panXValue: $('pan-x-value'), panY: $('pan-y'), panYValue: $('pan-y-value'),
   lineThickness: $('line-thickness'), lineThicknessValue: $('line-thickness-value'), contrast: $('contrast'), contrastValue: $('contrast-value'), brightness: $('brightness'), brightnessValue: $('brightness-value'),
@@ -39,6 +40,7 @@ function updateButtons() {
   ui.disconnect.disabled = busy || connecting || !bluetooth.connected;
   ui.send.disabled = busy || loading || !frame || !bluetooth.connected;
   ui.service.disabled = busy || connecting;
+  for (const control of [ui.chooseFile, ui.file, ui.imageUrl, ui.loadUrl]) control.disabled = busy || loading;
   for (const control of [ui.zoom, ui.preserveLines, ui.rotateLeft, ui.rotateRight, ui.resetTransform, ui.panX, ui.panY, ui.lineThickness, ui.contrast, ui.brightness]) control.disabled = busy || loading || !image;
   ui.canvas.classList.toggle('is-draggable', Boolean(image) && !busy && !loading);
   for (const radio of document.querySelectorAll('input[name="mode"]')) radio.disabled = busy || loading;
@@ -80,18 +82,27 @@ function refreshPreview() {
   frame = renderImage(ui.canvas, image, document.querySelector('input[name="mode"]:checked').value, imageOptions());
   updateButtons();
 }
-async function useFile(file) {
-  if (!file || busy) return;
+async function useImage(loader, label) {
+  if (busy || loading) return;
   loading = true; updateButtons(); showMessage('');
+  let loaded;
   try {
-    const loaded = await loadImage(file);
+    loaded = await loader();
     const nextFrame = renderImage(ui.canvas, loaded, document.querySelector('input[name="mode"]:checked').value, imageOptions());
     if (image?.close) image.close();
     image = loaded; frame = nextFrame;
-    ui.fileName.textContent = file.name;
-  } catch (error) { console.error(error); showMessage(error?.message || 'Nie można odczytać obrazu.', true); }
+    ui.fileName.textContent = label;
+  } catch (error) {
+    if (loaded?.close && loaded !== image) loaded.close();
+    if (image) {
+      try { renderImage(ui.canvas, image, document.querySelector('input[name="mode"]:checked').value, imageOptions()); }
+      catch (restoreError) { console.error(restoreError); }
+    }
+    console.error(error); showMessage(error?.message || 'Nie można odczytać obrazu.', true);
+  }
   finally { loading = false; updateButtons(); }
 }
+function useFile(file) { if (file) return useImage(() => loadImage(file), file.name); }
 
 ui.service.value = DEFAULT_SERVICE_UUID;
 const ctx = ui.canvas.getContext('2d');
@@ -109,7 +120,12 @@ ui.disconnect.addEventListener('click', () => {
   bluetooth.disconnect(); ui.device.textContent = 'Nie wybrano'; setStatus('disconnected'); showMessage('Rozłączono.');
 });
 ui.chooseFile.addEventListener('click', () => ui.file.click());
-ui.file.addEventListener('change', () => useFile(ui.file.files[0]));
+ui.file.addEventListener('change', () => { useFile(ui.file.files[0]); ui.file.value = ''; });
+ui.imageUrlForm.addEventListener('submit', event => {
+  event.preventDefault();
+  const url = ui.imageUrl.value.trim();
+  if (url) useImage(() => loadImageFromUrl(url), `URL: ${url}`);
+});
 for (const radio of document.querySelectorAll('input[name="mode"]')) radio.addEventListener('change', () => {
   if (!radio.checked) return;
   try { refreshPreview(); }

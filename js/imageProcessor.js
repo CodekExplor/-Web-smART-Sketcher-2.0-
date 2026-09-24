@@ -1,4 +1,4 @@
-import { WIDTH, HEIGHT } from './config.js?v=20260924-6';
+import { WIDTH, HEIGHT } from './config.js?v=20260924-7';
 
 export function placement(sourceWidth, sourceHeight, mode, targetWidth = WIDTH, targetHeight = HEIGHT) {
   if (![sourceWidth, sourceHeight, targetWidth, targetHeight].every(value => Number.isFinite(value) && value > 0) || !['fit', 'fill'].includes(mode)) throw new RangeError('Nieprawidłowy rozmiar obrazu lub tryb.');
@@ -136,7 +136,7 @@ export function adjustTone(imageData, { contrast = 100, brightness = 0 } = {}) {
 }
 
 export async function loadImage(file) {
-  if (!file || (!/^image\/(png|jpeg|webp|bmp)$/i.test(file.type) && !/\.(png|jpe?g|webp|bmp)$/i.test(file.name))) throw new Error('Wybierz plik PNG, JPG, WEBP lub BMP.');
+  if (!file || (!/^image\/(png|jpeg|webp|bmp|x-ms-bmp)$/i.test(file.type) && !/\.(png|jpe?g|webp|bmp)$/i.test(file.name))) throw new Error('Wybierz plik PNG, JPG, WEBP lub BMP.');
   if (typeof createImageBitmap === 'function') return createImageBitmap(file);
   const url = URL.createObjectURL(file);
   try {
@@ -145,6 +145,33 @@ export async function loadImage(file) {
     await img.decode();
     return img;
   } finally { URL.revokeObjectURL(url); }
+}
+
+export function parseImageUrl(value, pageProtocol = globalThis.location?.protocol) {
+  let url;
+  try { url = new URL(value.trim()); }
+  catch { throw new Error('Wpisz pełny adres URL obrazu, zaczynający się od https://.'); }
+  if (!['https:', 'http:'].includes(url.protocol)) throw new Error('Adres obrazu musi zaczynać się od https:// lub http://.');
+  if (pageProtocol === 'https:' && url.protocol !== 'https:') throw new Error('Na stronie HTTPS użyj adresu obrazu zaczynającego się od https://.');
+  return url;
+}
+
+export async function fetchImageFile(value, fetcher = fetch) {
+  const url = parseImageUrl(value);
+  let response;
+  try { response = await fetcher(url.href, { mode: 'cors', credentials: 'omit' }); }
+  catch { throw new Error('Nie można pobrać obrazu. Sprawdź adres i czy strona źródłowa zezwala na użycie obrazu w innych witrynach (CORS).'); }
+  if (!response.ok) throw new Error(`Nie można pobrać obrazu (HTTP ${response.status}).`);
+  const type = response.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase() || '';
+  if (type && type !== 'application/octet-stream' && !/^image\/(png|jpeg|webp|bmp|x-ms-bmp)$/.test(type)) throw new Error('Podany adres nie zwrócił obrazu PNG, JPG, WEBP ani BMP.');
+  const blob = await response.blob();
+  const name = decodeURIComponent(url.pathname.split('/').pop() || 'obraz');
+  if (!/^image\/(png|jpeg|webp|bmp|x-ms-bmp)$/.test(blob.type) && !/\.(png|jpe?g|webp|bmp)$/i.test(name)) throw new Error('Nie rozpoznano formatu obrazu. Użyj PNG, JPG, WEBP lub BMP.');
+  return new File([blob], name, { type: blob.type });
+}
+
+export async function loadImageFromUrl(value) {
+  return loadImage(await fetchImageFile(value));
 }
 
 function drawToContext(ctx, image, mode, rotation, zoom, panX, panY, width, height) {

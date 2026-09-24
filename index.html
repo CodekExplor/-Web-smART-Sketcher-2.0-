@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#102b39">
   <meta name="description" content="Wyślij własny obraz do smART Sketcher 2.0 prosto z przeglądarki.">
-  <link rel="manifest" href="./manifest.webmanifest?v=20260924-6">
+  <link rel="manifest" href="./manifest.webmanifest?v=20260924-7">
   <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./css/styles.css?v=20260924-6">
+  <link rel="stylesheet" href="./css/styles.css?v=20260924-7">
   <title>Smart Sketcher Web</title>
 </head>
 <body>
@@ -33,6 +33,11 @@
     <section class="card" aria-labelledby="image-title">
       <div class="section-head"><span class="step">02</span><div><h2 id="image-title">Obraz</h2><p>Wybierz i dopasuj do kadru 160 × 128</p></div></div>
       <div id="drop-zone" class="drop-zone"><div class="drop-icon" aria-hidden="true">↥</div><strong>Przeciągnij obraz tutaj</strong><span>lub</span><button id="choose-file-button" class="button secondary file-button" type="button">Wybierz obraz</button><input id="file-input" type="file" accept="image/png,image/jpeg,image/webp,image/bmp,.bmp" hidden aria-label="Wybierz plik obrazu"><small>PNG, JPG, WEBP lub BMP · plik pozostaje w Twojej przeglądarce</small></div>
+      <form id="image-url-form" class="image-url-form">
+        <label for="image-url">Lub wczytaj zdjęcie z URL</label>
+        <div class="image-url-row"><input id="image-url" type="url" inputmode="url" placeholder="https://example.com/zdjecie.jpg" autocomplete="url" required><button id="load-url-button" class="button secondary" type="submit">Wczytaj z URL</button></div>
+        <small>Użyj bezpośredniego linku do obrazu. Serwer obrazu musi zezwalać na pobranie przez przeglądarkę (CORS).</small>
+      </form>
       <p id="file-name" class="file-name" aria-live="polite">Nie wybrano obrazu</p>
       <fieldset class="mode-choice"><legend>Tryb dopasowania</legend><label><input type="radio" name="mode" value="fit" checked><span>Dopasuj <small>cały obraz, białe marginesy</small></span></label><label><input type="radio" name="mode" value="fill"><span>Wypełnij <small>pełny kadr, możliwe przycięcie</small></span></label></fieldset>
       <div class="adjustments" aria-label="Kadrowanie i wygląd obrazu">
@@ -65,8 +70,8 @@
       <div id="progress-area" class="progress-area" hidden><div class="progress-label"><span id="progress-text">Wysyłanie: 0 / 128</span><strong id="progress-percent">0%</strong></div><progress id="progress-bar" max="128" value="0">0%</progress></div>
       <p id="message" class="message" aria-live="polite"></p>
     </section>
-    <footer>Wymagana przeglądarka Chrome lub Edge, HTTPS i Bluetooth Low Energy. Protokół wymaga potwierdzenia na fizycznym urządzeniu.<br><span id="app-version">Wersja 2026.09.24.6</span></footer>
+    <footer>Wymagana przeglądarka Chrome lub Edge, HTTPS i Bluetooth Low Energy. Protokół wymaga potwierdzenia na fizycznym urządzeniu.<br><span id="app-version">Wersja 2026.09.24.7</span></footer>
   </main>
-  <script type="module" src="./js/app.js?v=20260924-6"></script>
+  <script type="module" src="./js/app.js?v=20260924-7"></script>
 </body>
 </html>

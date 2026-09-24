@@ -7,12 +7,12 @@ Statyczna aplikacja do przygotowania obrazu i wysłania go przez Web Bluetooth d
 1. Otwórz stronę w aktualnym Chrome lub Edge przez HTTPS albo `localhost`.
 2. Włącz smART Sketcher 2.0 i Bluetooth w komputerze.
 3. Kliknij **Połącz ze smART Sketcher** i wybierz urządzenie.
-4. Wybierz lub przeciągnij obraz PNG, JPG, WEBP albo BMP.
+4. Wybierz lub przeciągnij obraz PNG, JPG, WEBP albo BMP. Możesz też wkleić bezpośredni adres HTTPS obrazu i kliknąć **Wczytaj z URL**. Serwer obrazu musi zezwalać na pobieranie z innych witryn (CORS); link do strony z obrazem nie wystarczy.
 5. Wybierz **Dopasuj** (cały obraz i białe marginesy) lub **Wypełnij** (środkowe przycięcie). Ustaw skalę od 50% do 300% i obracaj obraz przyciskami o 90° w lewo lub w prawo. Opcja **Zachowaj cienkie linie** pomaga przy zmniejszaniu rysunków konturowych; wyłącz ją dla zdjęć.
 6. Aby wykadrować obraz, powiększ go i przeciągnij podgląd. Położenie można też ustawić suwakami X/Y lub strzałkami, z klawiszem Shift po 5 px. Suwak **Grubość linii** ścieśnia albo pogrubia kreski; **Kontrast** i **Jasność** pozwalają dopasować wygląd projekcji.
 7. Sprawdź końcowy podgląd i kliknij **Wyślij do projektora**. Przycisk **Resetuj ustawienia** przywraca skalę, obrót, położenie, grubość, kontrast i jasność do wartości początkowych.
 
-Plik obrazu jest przetwarzany lokalnie w przeglądarce. Aplikacja nie przesyła go na serwer. Kadrowanie i suwaki wyglądu zmieniają dokładnie ten sam obraz 160 × 128 RGB565, który jest pokazywany w podglądzie i wysyłany do projektora. Skala działa względem wybranego trybu Dopasuj/Wypełnij; przy zmniejszeniu mogą pojawić się białe marginesy. PWA można zainstalować z menu Chrome/Edge; działa nadal w przeglądarkowym runtime i wymaga dostępnego Bluetooth.
+Obraz jest przetwarzany lokalnie w przeglądarce. Przy użyciu URL przeglądarka pobiera go bezpośrednio z podanego serwera; aplikacja nie przesyła go na własny serwer. Kadrowanie i suwaki wyglądu zmieniają dokładnie ten sam obraz 160 × 128 RGB565, który jest pokazywany w podglądzie i wysyłany do projektora. Skala działa względem wybranego trybu Dopasuj/Wypełnij; przy zmniejszeniu mogą pojawić się białe marginesy. PWA można zainstalować z menu Chrome/Edge; działa nadal w przeglądarkowym runtime i wymaga dostępnego Bluetooth.
 
 Przy skali poniżej 100% i włączonej opcji ochrony linii aplikacja renderuje obraz w rozdzielczości 4× większej, a następnie zmniejsza go z uwzględnieniem najciemniejszych próbek w każdym pikselu. Cienkie czarne kontury na jasnym tle pozostają dzięki temu wyraźniejsze. Podgląd uwzględnia tę samą korektę. Szczegóły mniejsze od pojedynczego piksela projektora nadal mogą się zlewać ze względu na fizyczną rozdzielczość 160 × 128.
 
@@ -56,7 +56,7 @@ Jeśli przeglądarka odrzuca zapis 320 B, w **Ustawieniach połączenia i transm
 
 ### Gdy obraz ma poziome przerwy
 
-1. Otwórz [adres z numerem wersji](https://codekexplor.github.io/-Web-smART-Sketcher-2.0-/?v=20260924-6). Na dole strony musi być napis **Wersja 2026.09.24.6**. Zamknij wcześniej otwartą kartę lub zainstalowaną PWA. Zasoby JS/CSS mają numer wersji w adresie, a service worker pobiera aktualną wersję z sieci.
+1. Otwórz [adres z numerem wersji](https://codekexplor.github.io/-Web-smART-Sketcher-2.0-/?v=20260924-7). Na dole strony musi być napis **Wersja 2026.09.24.7**. Zamknij wcześniej otwartą kartę lub zainstalowaną PWA. Zasoby JS/CSS mają numer wersji w adresie, a service worker pobiera aktualną wersję z sieci.
 2. Użyj domyślnej opcji **Cała linia · 320 B**.
 3. Wyślij prosty obraz testowy i porównaj go z podglądem. Postęp oznacza zakończone zapisy GATT, a nie potwierdzenie wyglądu obrazu.
 4. Jeśli wystąpi błąd zapisu 320 B, przetestuj 80 B, a dopiero potem 20 B. Zapisz rozmiar zapisu, przeglądarkę, system, linię/procent błędu i ostatnią odpowiedź BLE. Te dane pomogą dobrać poprawny sposób transmisji dla Twojego egzemplarza.
